@@ -43,6 +43,8 @@ impl Editor {
     }
 
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        Terminal::hide_cursor()?;
+
         if self.should_quit {
             Terminal::clear_screen()?;
             println!("Goodbye!\r\n");
@@ -51,6 +53,7 @@ impl Editor {
             Terminal::move_cursor_to(0, 0)?;
         }
 
+        Terminal::show_cursor()?;
         Ok(())
     }
 

@@ -31,4 +31,14 @@ impl Terminal {
     pub fn size() -> Result<(u16, u16), std::io::Error> {
         terminal::size()
     }
+
+    pub fn hide_cursor() -> Result<(), std::io::Error> {
+        execute!(stdout(), cursor::Hide)?;
+        Ok(())
+    }
+
+    pub fn show_cursor() -> Result<(), std::io::Error> {
+        execute!(stdout(), cursor::Show)?;
+        Ok(())
+    }
 }
