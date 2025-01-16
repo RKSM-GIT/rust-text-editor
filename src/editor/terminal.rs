@@ -23,7 +23,7 @@ impl Terminal {
     pub fn initialize() -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         Self::clear_screen()?;
-        Self::move_cursor_to(Position { row: 0, col: 0 })?;
+        Self::move_caret_to(Position { row: 0, col: 0 })?;
         Self::execute()?;
         Ok(())
     }
@@ -43,7 +43,7 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn move_cursor_to(position: Position) -> Result<(), Error> {
+    pub fn move_caret_to(position: Position) -> Result<(), Error> {
         Self::queue_command(cursor::MoveTo(position.col, position.row))?;
         Ok(())
     }
@@ -53,12 +53,12 @@ impl Terminal {
         Ok(Size { height, width })
     }
 
-    pub fn hide_cursor() -> Result<(), Error> {
+    pub fn hide_caret() -> Result<(), Error> {
         Self::queue_command(cursor::Hide)?;
         Ok(())
     }
 
-    pub fn show_cursor() -> Result<(), Error> {
+    pub fn show_caret() -> Result<(), Error> {
         Self::queue_command(cursor::Show)?;
         Ok(())
     }
