@@ -6,25 +6,34 @@ use crossterm::{
 pub struct Editor {}
 
 impl Editor {
-    pub fn run() {
-        enable_raw_mode().unwrap();
+    pub fn default() -> Self {
+        Editor {}
+    }
+
+    pub fn run(&self) {
+        if let Err(err) = self.repl() {
+            panic!("Error: {err:?}");
+        }
+
+        println!("Goodbye!");
+    }
+
+    fn repl(&self) -> Result<(), std::io::Error> {
+        enable_raw_mode()?;
 
         loop {
-            match read() {
-                Ok(Key(event)) => {
-                    println!("{event:?} \r");
+            if let Key(event) = read()? {
+                println!("{event:?} \r");
 
-                    if let Char(c) = event.code {
-                        if c == 'q' {
-                            break;
-                        }
+                if let Char(c) = event.code {
+                    if c == 'q' {
+                        break;
                     }
                 }
-                Err(err) => println!("Error: {err}"),
-                _ => {}
             }
         }
 
-        disable_raw_mode().unwrap();
+        disable_raw_mode()?;
+        Ok(())
     }
 }

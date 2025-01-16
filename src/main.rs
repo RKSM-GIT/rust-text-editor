@@ -4,5 +4,6 @@ mod editor;
 use editor::Editor;
 
 fn main() {
-    Editor::run();
+    let editor = Editor::default();
+    editor.run();
 }
