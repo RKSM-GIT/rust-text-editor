@@ -1,34 +1,27 @@
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use std::io::{self, Read};
+use crossterm::{
+    event::{read, Event::Key, KeyCode::Char},
+    terminal::{disable_raw_mode, enable_raw_mode},
+};
 
 pub struct Editor {}
 
 impl Editor {
-    pub fn default() -> Self {
-        Editor {}
-    }
-
-    pub fn run(&self) {
+    pub fn run() {
         enable_raw_mode().unwrap();
 
-        for b in io::stdin().bytes() {
-            match b {
-                Ok(b) => {
-                    let c = b as char;
+        loop {
+            match read() {
+                Ok(Key(event)) => {
+                    println!("{event:?} \r");
 
-                    if c.is_control() {
-                        println!("BYTES: {0:08b}, ASCII: {0:#03}\r", b);
-                    } else {
-                        println!("BYTES: {0:08b}, ASCII: {0:#03}, CHAR: {1:#?}\r", b, c);
-                    }
-
-                    if c == 'q' {
-                        break;
+                    if let Char(c) = event.code {
+                        if c == 'q' {
+                            break;
+                        }
                     }
                 }
-                Err(e) => {
-                    println!("Error occurred: {}", e);
-                }
+                Err(err) => println!("Error: {err}"),
+                _ => {}
             }
         }
 
