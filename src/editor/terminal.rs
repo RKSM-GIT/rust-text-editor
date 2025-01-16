@@ -1,6 +1,7 @@
 use crossterm::{
     cursor, queue, style,
     terminal::{self, ClearType},
+    Command,
 };
 use std::io::{stdout, Error, Write};
 
@@ -33,15 +34,17 @@ impl Terminal {
     }
 
     pub fn clear_screen() -> Result<(), Error> {
-        queue!(stdout(), terminal::Clear(ClearType::All))
+        Self::queue_command(terminal::Clear(ClearType::All))?;
+        Ok(())
     }
 
     pub fn clear_line() -> Result<(), Error> {
-        queue!(stdout(), terminal::Clear(ClearType::CurrentLine))
+        Self::queue_command(terminal::Clear(ClearType::CurrentLine))?;
+        Ok(())
     }
 
     pub fn move_cursor_to(position: Position) -> Result<(), Error> {
-        queue!(stdout(), cursor::MoveTo(position.col, position.row))?;
+        Self::queue_command(cursor::MoveTo(position.col, position.row))?;
         Ok(())
     }
 
@@ -51,20 +54,26 @@ impl Terminal {
     }
 
     pub fn hide_cursor() -> Result<(), Error> {
-        queue!(stdout(), cursor::Hide)?;
+        Self::queue_command(cursor::Hide)?;
         Ok(())
     }
 
     pub fn show_cursor() -> Result<(), Error> {
-        queue!(stdout(), cursor::Show)?;
+        Self::queue_command(cursor::Show)?;
         Ok(())
     }
 
     pub fn print(text: &str) -> Result<(), Error> {
-        queue!(stdout(), style::Print(text))
+        Self::queue_command(style::Print(text))?;
+        Ok(())
     }
 
     pub fn execute() -> Result<(), Error> {
         stdout().flush()
+    }
+
+    fn queue_command<T: Command>(command: T) -> Result<(), Error> {
+        queue!(stdout(), command)?;
+        Ok(())
     }
 }
