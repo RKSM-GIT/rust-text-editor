@@ -5,22 +5,16 @@ use crossterm::{
 };
 use std::io::{stdout, Error, Write};
 
-#[derive(Clone, Copy)]
+#[derive(Default, Clone, Copy)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Default, Clone, Copy)]
 pub struct Position {
     pub row: usize,
     pub col: usize,
-}
-
-impl Position {
-    pub fn default() -> Self {
-        Position { row: 0, col: 0 }
-    }
 }
 
 pub struct Terminal {}
@@ -29,12 +23,12 @@ impl Terminal {
     pub fn initialize() -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         Self::clear_screen()?;
-        Self::move_caret_to(Position { row: 0, col: 0 })?;
         Self::execute()?;
         Ok(())
     }
 
     pub fn terminate() -> Result<(), Error> {
+        Self::execute()?;
         terminal::disable_raw_mode()?;
         Ok(())
     }

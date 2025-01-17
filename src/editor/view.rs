@@ -9,67 +9,63 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct View {
     buffer: Buffer,
+    needs_redraw: bool,
+    size: Size,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            buffer: Buffer::default(),
+            needs_redraw: true,
+            size: Terminal::size().unwrap_or_default(),
+        }
+    }
 }
 
 impl View {
-    pub fn default() -> Self {
-        View {
-            buffer: Buffer::default(),
-        }
+    pub fn resize(&mut self, size: Size) {
+        self.size = size;
+        self.needs_redraw = true;
     }
 
     pub fn load(&mut self, file_name: &str) {
         if let Ok(content) = fs::read_to_string(file_name) {
             self.buffer.load(content);
+            self.needs_redraw = true;
         }
     }
 
-    pub fn render(&self) -> Result<(), Error> {
-        if !self.buffer.is_empty() {
-            self.render_buffer()?;
-        } else {
-            self.render_welcome_screen()?;
+    pub fn render(&mut self) -> Result<(), Error> {
+        if !self.needs_redraw {
+            return Ok(());
         }
 
-        Ok(())
-    }
+        let Size { height, width } = self.size;
+        if height == 0 || width == 0 {
+            return Ok(());
+        }
 
-    pub fn render_buffer(&self) -> Result<(), Error> {
-        let Size { height, width } = Terminal::size()?;
+        let vertical_center = height / 3;
 
         for row in 0..height {
-            Terminal::move_caret_to(Position { row, col: 0 })?;
-            Terminal::clear_line()?;
-
             if let Some(line) = self.buffer.lines.get(row) {
                 let line = &line[..width.min(line.len())];
-                Self::display_text(line)?;
-            } else {
-                Self::display_text("~")?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn render_welcome_screen(&self) -> Result<(), Error> {
-        let Size { height, width } = Terminal::size()?;
-
-        for row in 0..height {
-            Terminal::move_caret_to(Position { row, col: 0 })?;
-            Terminal::clear_line()?;
-
-            Self::display_text("~")?;
-
-            if row == height / 3 {
+                Self::render_text(row, line)?;
+            } else if row == vertical_center && self.buffer.is_empty() {
                 Self::display_welcome_message(row, width)?;
+            } else {
+                Self::render_text(row, "~")?;
             }
         }
 
+        self.needs_redraw = false;
         Ok(())
     }
 
-    fn display_text(text: &str) -> Result<(), Error> {
+    fn render_text(row: usize, text: &str) -> Result<(), Error> {
+        Terminal::move_caret_to(Position { row, col: 0 })?;
+        Terminal::clear_line()?;
         Terminal::print(text)
     }
 

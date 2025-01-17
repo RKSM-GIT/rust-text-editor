@@ -2,11 +2,7 @@ mod buffer;
 mod terminal;
 mod view;
 
-use crossterm::event::{
-    read,
-    Event::{self, Key},
-    KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
-};
+use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
 use view::View;
@@ -21,7 +17,7 @@ impl Editor {
     pub fn default() -> Self {
         Self {
             should_quit: false,
-            caret_location: Position { row: 0, col: 0 },
+            caret_location: Position::default(),
             view: View::default(),
         }
     }
@@ -45,46 +41,54 @@ impl Editor {
     fn repl(&mut self) -> Result<(), Error> {
         while !self.should_quit {
             let event = read()?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(event)?;
             self.refresh_screen()?;
         }
 
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind,
-            ..
-        }) = event
-        {
-            match code {
-                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
+    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                modifiers,
+                kind: KeyEventKind::Press,
+                ..
+            }) => match (code, modifiers) {
+                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
-                KeyCode::Up
-                | KeyCode::Right
-                | KeyCode::Down
-                | KeyCode::Left
-                | KeyCode::End
-                | KeyCode::Home
-                | KeyCode::PageDown
-                | KeyCode::PageUp
-                    if *kind == KeyEventKind::Press =>
-                {
-                    self.move_caret(*code)?;
+                (
+                    KeyCode::Up
+                    | KeyCode::Right
+                    | KeyCode::Down
+                    | KeyCode::Left
+                    | KeyCode::End
+                    | KeyCode::Home
+                    | KeyCode::PageDown
+                    | KeyCode::PageUp,
+                    _,
+                ) => {
+                    self.move_caret(code)?;
                 }
                 _ => (),
+            },
+            Event::Resize(width, height) => {
+                self.view.resize(Size {
+                    height: height as usize,
+                    width: width as usize,
+                });
             }
+            _ => {}
         }
 
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), Error> {
+    fn refresh_screen(&mut self) -> Result<(), Error> {
         Terminal::hide_caret()?;
+        Terminal::move_caret_to(Position::default())?;
 
         if self.should_quit {
             Terminal::clear_screen()?;
@@ -101,35 +105,37 @@ impl Editor {
 
     fn move_caret(&mut self, key_code: KeyCode) -> Result<(), Error> {
         let Size { height, width } = Terminal::size()?;
+        let Position { mut row, mut col } = self.caret_location;
 
         match key_code {
             KeyCode::Left => {
-                self.caret_location.col = self.caret_location.col.saturating_sub(1);
+                col = col.saturating_sub(1);
             }
             KeyCode::Right => {
-                self.caret_location.col = self.caret_location.col.saturating_add(1).min(width - 1);
+                col = col.saturating_add(1).min(width.saturating_sub(1));
             }
             KeyCode::Up => {
-                self.caret_location.row = self.caret_location.row.saturating_sub(1);
+                row = row.saturating_sub(1);
             }
             KeyCode::Down => {
-                self.caret_location.row = self.caret_location.row.saturating_add(1).min(height - 1);
+                row = row.saturating_add(1).min(height.saturating_sub(1));
             }
             KeyCode::Home => {
-                self.caret_location.col = 0;
+                col = 0;
             }
             KeyCode::End => {
-                self.caret_location.col = width - 1;
+                col = width.saturating_sub(1);
             }
             KeyCode::PageUp => {
-                self.caret_location.row = 0;
+                row = 0;
             }
             KeyCode::PageDown => {
-                self.caret_location.row = height - 1;
+                row = height.saturating_sub(1);
             }
             _ => {}
         }
 
+        self.caret_location = Position { row, col };
         Terminal::move_caret_to(self.caret_location)?;
         Ok(())
     }
