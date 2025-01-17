@@ -85,7 +85,6 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), Error> {
         Terminal::hide_caret()?;
-        Terminal::move_caret_to(Position::default())?;
 
         if self.should_quit {
             Terminal::clear_screen()?;

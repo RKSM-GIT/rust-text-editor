@@ -35,19 +35,16 @@ impl View {
     }
 
     pub fn render_buffer(&self) -> Result<(), Error> {
-        let Size { height, .. } = Terminal::size()?;
+        let Size { height, width } = Terminal::size()?;
 
         for row in 0..height {
+            Terminal::move_caret_to(Position { row, col: 0 })?;
             Terminal::clear_line()?;
 
             if let Some(line) = self.buffer.lines.get(row) {
                 Self::display_text(line)?;
             } else {
                 Self::display_text("~")?;
-            }
-
-            if row.saturating_add(1) != height {
-                Terminal::print("\r\n")?;
             }
         }
 
@@ -58,15 +55,13 @@ impl View {
         let Size { height, width } = Terminal::size()?;
 
         for row in 0..height {
+            Terminal::move_caret_to(Position { row, col: 0 })?;
             Terminal::clear_line()?;
+
             Self::display_text("~")?;
 
             if row == height / 3 {
                 Self::display_welcome_message(row, width)?;
-            }
-
-            if row.saturating_add(1) != height {
-                Terminal::print("\r\n")?;
             }
         }
 
