@@ -1,5 +1,7 @@
+mod buffer;
 mod terminal;
 mod view;
+
 use crossterm::event::{
     read,
     Event::{self, Key},
@@ -12,13 +14,15 @@ use view::View;
 pub struct Editor {
     should_quit: bool,
     caret_location: Position,
+    view: View,
 }
 
 impl Editor {
-    pub const fn default() -> Self {
+    pub fn default() -> Self {
         Self {
             should_quit: false,
             caret_location: Position { row: 0, col: 0 },
+            view: View::default(),
         }
     }
 
@@ -72,13 +76,13 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), Error> {
         Terminal::hide_caret()?;
+        Terminal::move_caret_to(Position::default())?;
 
         if self.should_quit {
             Terminal::clear_screen()?;
-            Terminal::move_caret_to(Position { row: 0, col: 0 })?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
-            View::draw_rows()?;
+            self.view.render()?;
             Terminal::move_caret_to(self.caret_location)?;
         }
 

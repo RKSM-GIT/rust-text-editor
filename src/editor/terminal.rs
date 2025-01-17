@@ -7,14 +7,20 @@ use std::io::{stdout, Error, Write};
 
 #[derive(Clone, Copy)]
 pub struct Size {
-    pub height: u16,
-    pub width: u16,
+    pub height: usize,
+    pub width: usize,
 }
 
 #[derive(Clone, Copy)]
 pub struct Position {
-    pub row: u16,
-    pub col: u16,
+    pub row: usize,
+    pub col: usize,
+}
+
+impl Position {
+    pub fn default() -> Self {
+        Position { row: 0, col: 0 }
+    }
 }
 
 pub struct Terminal {}
@@ -44,13 +50,16 @@ impl Terminal {
     }
 
     pub fn move_caret_to(position: Position) -> Result<(), Error> {
-        Self::queue_command(cursor::MoveTo(position.col, position.row))?;
+        Self::queue_command(cursor::MoveTo(position.col as u16, position.row as u16))?;
         Ok(())
     }
 
     pub fn size() -> Result<Size, Error> {
         let (width, height) = terminal::size()?;
-        Ok(Size { height, width })
+        Ok(Size {
+            height: height as usize,
+            width: width as usize,
+        })
     }
 
     pub fn hide_caret() -> Result<(), Error> {
