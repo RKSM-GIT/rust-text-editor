@@ -42,6 +42,7 @@ impl View {
             Terminal::clear_line()?;
 
             if let Some(line) = self.buffer.lines.get(row) {
+                let line = &line[..width.min(line.len())];
                 Self::display_text(line)?;
             } else {
                 Self::display_text("~")?;
