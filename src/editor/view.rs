@@ -2,7 +2,7 @@ use super::{
     buffer::Buffer,
     terminal::{Position, Size, Terminal},
 };
-use std::io::Error;
+use std::{fs, io::Error};
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -18,18 +18,32 @@ impl View {
         }
     }
 
+    pub fn load(&mut self, file_name: &str) {
+        if let Ok(content) = fs::read_to_string(file_name) {
+            self.buffer.load(content);
+        }
+    }
+
     pub fn render(&self) -> Result<(), Error> {
-        let Size { height, width } = Terminal::size()?;
+        if !self.buffer.is_empty() {
+            self.render_buffer()?;
+        } else {
+            self.render_welcome_screen()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn render_buffer(&self) -> Result<(), Error> {
+        let Size { height, .. } = Terminal::size()?;
 
         for row in 0..height {
             Terminal::clear_line()?;
 
-            if row == height / 3 {
-                Self::display_welcome_message(row, width)?;
-            } else if let Some(line) = self.buffer.lines.get(row) {
+            if let Some(line) = self.buffer.lines.get(row) {
                 Self::display_text(line)?;
             } else {
-                Self::display_empty_row()?;
+                Self::display_text("~")?;
             }
 
             if row.saturating_add(1) != height {
@@ -40,8 +54,23 @@ impl View {
         Ok(())
     }
 
-    fn display_empty_row() -> Result<(), Error> {
-        Terminal::print("~")
+    pub fn render_welcome_screen(&self) -> Result<(), Error> {
+        let Size { height, width } = Terminal::size()?;
+
+        for row in 0..height {
+            Terminal::clear_line()?;
+            Self::display_text("~")?;
+
+            if row == height / 3 {
+                Self::display_welcome_message(row, width)?;
+            }
+
+            if row.saturating_add(1) != height {
+                Terminal::print("\r\n")?;
+            }
+        }
+
+        Ok(())
     }
 
     fn display_text(text: &str) -> Result<(), Error> {
@@ -59,7 +88,6 @@ impl View {
         };
         let center_pos = Position { row, col };
 
-        Self::display_empty_row()?;
         Terminal::move_caret_to(center_pos)?;
         Terminal::print(&hecto_info)
     }

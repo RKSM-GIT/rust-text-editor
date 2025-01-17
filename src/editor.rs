@@ -28,9 +28,18 @@ impl Editor {
 
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
+        self.handle_args();
         let result = self.repl();
         Terminal::terminate().unwrap();
         result.unwrap();
+    }
+
+    fn handle_args(&mut self) {
+        let args: Vec<String> = std::env::args().collect();
+
+        if let Some(file_name) = args.get(1) {
+            self.view.load(file_name);
+        }
     }
 
     fn repl(&mut self) -> Result<(), Error> {

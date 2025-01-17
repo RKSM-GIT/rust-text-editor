@@ -4,10 +4,14 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn default() -> Self {
-        let default_line = vec!["Hello, World".to_string(), "second line".to_string()];
+        Buffer { lines: vec![] }
+    }
 
-        Buffer {
-            lines: default_line,
-        }
+    pub fn load(&mut self, content: String) {
+        self.lines = content.lines().map(|x| x.to_string()).collect();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty()
     }
 }
