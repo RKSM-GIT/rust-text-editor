@@ -1,4 +1,5 @@
 mod terminal;
+mod view;
 use crossterm::event::{
     read,
     Event::{self, Key},
@@ -6,9 +7,7 @@ use crossterm::event::{
 };
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use view::View;
 
 pub struct Editor {
     should_quit: bool,
@@ -79,49 +78,13 @@ impl Editor {
             Terminal::move_caret_to(Position { row: 0, col: 0 })?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
-            Self::draw_rows()?;
+            View::draw_rows()?;
             Terminal::move_caret_to(self.caret_location)?;
         }
 
         Terminal::show_caret()?;
         Terminal::execute()?;
         Ok(())
-    }
-
-    pub fn draw_rows() -> Result<(), Error> {
-        let Size { height, width } = Terminal::size()?;
-
-        for row in 0..height {
-            if row == height / 3 {
-                Self::display_welcome_message(row, width)?;
-            } else {
-                Self::display_empty_row(row)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn display_empty_row(row: u16) -> Result<(), Error> {
-        Terminal::move_caret_to(Position { row, col: 0 })?;
-        Terminal::clear_line()?;
-        Terminal::print("~")
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    fn display_welcome_message(row: u16, width: u16) -> Result<(), Error> {
-        let hecto_info = format!("{NAME} {VERSION}");
-        let info_len = hecto_info.len() as u16;
-        let col = if width / 2 >= (info_len - 1) / 2 {
-            width / 2 - (info_len - 1) / 2
-        } else {
-            0
-        };
-        let center_pos = Position { row, col };
-
-        Self::display_empty_row(row)?;
-        Terminal::move_caret_to(center_pos)?;
-        Terminal::print(&hecto_info)
     }
 
     fn move_caret(&mut self, key_code: KeyCode) -> Result<(), Error> {
