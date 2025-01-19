@@ -1,5 +1,7 @@
+use super::terminal::Position;
+
 pub struct Buffer {
-    pub lines: Vec<String>,
+    lines: Vec<String>,
 }
 
 impl Buffer {
@@ -13,5 +15,17 @@ impl Buffer {
 
     pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
+    }
+
+    pub fn get_line(&self, row: usize, offset: Position) -> Option<&str> {
+        if row + offset.row >= self.lines.len() {
+            return None;
+        }
+
+        if offset.col >= self.lines[row].len() {
+            return Some("");
+        }
+
+        return Some(&self.lines[row][offset.col..]);
     }
 }

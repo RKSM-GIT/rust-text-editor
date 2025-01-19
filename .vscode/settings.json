@@ -3,6 +3,11 @@
         "xhash": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "xstring": "cpp",
+        "unordered_set": "cpp",
+        "iosfwd": "cpp",
+        "format": "cpp",
+        "list": "cpp"
     }
 }

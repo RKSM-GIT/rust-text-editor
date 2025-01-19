@@ -1,5 +1,6 @@
 use super::{
     buffer::Buffer,
+    editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
 };
 use std::fs;
@@ -11,6 +12,8 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    caret_location: Position,
+    scroll_offset: Position,
 }
 
 impl Default for View {
@@ -19,14 +22,15 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
+            caret_location: Position::default(),
+            scroll_offset: Position::default(),
         }
     }
 }
 
 impl View {
-    pub fn resize(&mut self, size: Size) {
-        self.size = size;
-        self.needs_redraw = true;
+    pub fn get_caret_location(&self) -> Position {
+        return self.caret_location;
     }
 
     pub fn load(&mut self, file_name: &str) {
@@ -49,7 +53,7 @@ impl View {
         let vertical_center = height / 3;
 
         for row in 0..height {
-            if let Some(line) = self.buffer.lines.get(row) {
+            if let Some(line) = self.buffer.get_line(row, self.scroll_offset) {
                 let line = &line[..width.min(line.len())];
                 Self::render_text(row, line);
             } else if row == vertical_center && self.buffer.is_empty() {
@@ -83,5 +87,69 @@ impl View {
 
         debug_assert!(res1.is_ok(), "Error Moving Carent");
         debug_assert!(res2.is_ok(), "Error Printing to terminal");
+    }
+
+    pub fn handle_command(&mut self, command: EditorCommand) {
+        match command {
+            EditorCommand::Move(direction) => self.handle_move(direction),
+            EditorCommand::Resize(size) => self.handle_resize(size),
+            EditorCommand::Quit => {}
+        }
+    }
+
+    fn handle_resize(&mut self, size: Size) {
+        self.size = size;
+        self.needs_redraw = true;
+    }
+
+    fn handle_move(&mut self, direction: Direction) {
+        let Size { height, width } = Terminal::size().unwrap_or_default();
+        let Position { mut row, mut col } = self.caret_location;
+
+        match direction {
+            Direction::Left => {
+                if col == 0 {
+                    self.scroll_offset.col = self.scroll_offset.col.saturating_sub(1);
+                    self.needs_redraw = true;
+                }
+                col = col.saturating_sub(1);
+            }
+            Direction::Right => {
+                if col == width.saturating_sub(1) {
+                    self.scroll_offset.col = self.scroll_offset.col.saturating_add(1);
+                    self.needs_redraw = true;
+                }
+                col = col.saturating_add(1).min(width.saturating_sub(1));
+            }
+            Direction::Up => {
+                if row == 0 {
+                    self.scroll_offset.row = self.scroll_offset.row.saturating_sub(1);
+                    self.needs_redraw = true;
+                }
+                row = row.saturating_sub(1);
+            }
+            Direction::Down => {
+                if row == height.saturating_sub(1) {
+                    self.scroll_offset.row = self.scroll_offset.row.saturating_add(1);
+                    self.needs_redraw = true;
+                }
+                row = row.saturating_add(1).min(height.saturating_sub(1));
+            }
+            Direction::Home => {
+                col = 0;
+            }
+            Direction::End => {
+                col = width.saturating_sub(1);
+            }
+            Direction::PageUp => {
+                row = 0;
+            }
+            Direction::PageDown => {
+                row = height.saturating_sub(1);
+            }
+        }
+
+        self.caret_location.row = row;
+        self.caret_location.col = col;
     }
 }

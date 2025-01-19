@@ -1,16 +1,17 @@
 mod buffer;
+mod editorcommand;
 mod terminal;
 mod view;
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
+use editorcommand::EditorCommand;
 use std::io::Error;
 use std::panic;
-use terminal::{Position, Size, Terminal};
+use terminal::Terminal;
 use view::View;
 
 pub struct Editor {
     should_quit: bool,
-    caret_location: Position,
     view: View,
 }
 
@@ -27,7 +28,6 @@ impl Editor {
 
         Ok(Self {
             should_quit: false,
-            caret_location: Position::default(),
             view,
         })
     }
@@ -72,74 +72,34 @@ impl Editor {
         }
     }
 
-    fn move_caret(&mut self, key_code: KeyCode) {
-        let Size { height, width } = Terminal::size().unwrap_or_default();
-        let Position { mut row, mut col } = self.caret_location;
+    fn evaluate_event(&mut self, event: Event) {
+        let should_process = match event {
+            Event::Key(KeyEvent { kind, .. }) => kind == KeyEventKind::Press,
+            Event::Resize(_, _) => true,
+            _ => false,
+        };
 
-        match key_code {
-            KeyCode::Left => {
-                col = col.saturating_sub(1);
+        if !should_process {
+            #[cfg(debug_assertions)]
+            {
+                panic!("Received and discarded unsupported or non-press event");
             }
-            KeyCode::Right => {
-                col = col.saturating_add(1).min(width.saturating_sub(1));
-            }
-            KeyCode::Up => {
-                row = row.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                row = row.saturating_add(1).min(height.saturating_sub(1));
-            }
-            KeyCode::Home => {
-                col = 0;
-            }
-            KeyCode::End => {
-                col = width.saturating_sub(1);
-            }
-            KeyCode::PageUp => {
-                row = 0;
-            }
-            KeyCode::PageDown => {
-                row = height.saturating_sub(1);
-            }
-            _ => {}
         }
 
-        self.caret_location = Position { row, col };
-    }
-
-    fn evaluate_event(&mut self, event: Event) {
-        match event {
-            Event::Key(KeyEvent {
-                code,
-                modifiers,
-                kind: KeyEventKind::Press,
-                ..
-            }) => match (code, modifiers) {
-                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+        match EditorCommand::try_from(event) {
+            Ok(command) => {
+                if matches!(command, EditorCommand::Quit) {
                     self.should_quit = true;
+                } else {
+                    self.view.handle_command(command);
                 }
-                (
-                    KeyCode::Up
-                    | KeyCode::Right
-                    | KeyCode::Down
-                    | KeyCode::Left
-                    | KeyCode::End
-                    | KeyCode::Home
-                    | KeyCode::PageDown
-                    | KeyCode::PageUp,
-                    _,
-                ) => {
-                    self.move_caret(code);
-                }
-                _ => (),
-            },
-            Event::Resize(width, height) => {
-                self.view.resize(Size {
-                    height: height as usize,
-                    width: width as usize,
-                });
             }
-            _ => {}
+            Err(err) => {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Could not handle command: {err}");
+                }
+            }
         }
     }
 
@@ -147,7 +107,7 @@ impl Editor {
         let _ = Terminal::hide_caret();
 
         self.view.render();
-        let _ = Terminal::move_caret_to(self.caret_location);
+        let _ = Terminal::move_caret_to(self.view.get_caret_location());
 
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
