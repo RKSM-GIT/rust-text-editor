@@ -1,6 +1,6 @@
 use crossterm::{
     cursor, queue, style,
-    terminal::{self, ClearType},
+    terminal::{self, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     Command,
 };
 use std::io::{stdout, Error, Write};
@@ -22,12 +22,15 @@ pub struct Terminal {}
 impl Terminal {
     pub fn initialize() -> Result<(), Error> {
         terminal::enable_raw_mode()?;
+        Self::enter_alternate_screen()?;
         Self::clear_screen()?;
         Self::execute()?;
         Ok(())
     }
 
     pub fn terminate() -> Result<(), Error> {
+        Self::leave_alternate_screen()?;
+        Self::show_caret()?;
         Self::execute()?;
         terminal::disable_raw_mode()?;
         Ok(())
@@ -71,8 +74,25 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_row(row: usize, text: &str) -> Result<(), Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(text)?;
+        Ok(())
+    }
+
     pub fn execute() -> Result<(), Error> {
         stdout().flush()
+    }
+
+    fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(EnterAlternateScreen)?;
+        Ok(())
+    }
+
+    fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(LeaveAlternateScreen)?;
+        Ok(())
     }
 
     fn queue_command<T: Command>(command: T) -> Result<(), Error> {
