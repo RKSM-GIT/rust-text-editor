@@ -8,6 +8,8 @@
         "unordered_set": "cpp",
         "iosfwd": "cpp",
         "format": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "utility": "cpp",
+        "deque": "cpp"
     }
 }

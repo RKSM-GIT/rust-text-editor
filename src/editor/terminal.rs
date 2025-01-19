@@ -5,16 +5,12 @@ use crossterm::{
 };
 use std::io::{stdout, Error, Write};
 
+use super::position::Position;
+
 #[derive(Default, Clone, Copy)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
-}
-
-#[derive(Default, Clone, Copy)]
-pub struct Position {
-    pub row: usize,
-    pub col: usize,
 }
 
 pub struct Terminal {}

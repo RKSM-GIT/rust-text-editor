@@ -1,7 +1,8 @@
 use super::{
     buffer::Buffer,
     editorcommand::{Direction, EditorCommand},
-    terminal::{Position, Size, Terminal},
+    position::Position,
+    terminal::{Size, Terminal},
 };
 use std::fs;
 
@@ -12,8 +13,9 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
-    caret_location: Position,
-    scroll_offset: Position,
+    pos: Position,
+    offset: Position,
+    max_col: usize,
 }
 
 impl Default for View {
@@ -22,15 +24,16 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
-            caret_location: Position::default(),
-            scroll_offset: Position::default(),
+            pos: Position::default(),
+            offset: Position::default(),
+            max_col: 0,
         }
     }
 }
 
 impl View {
-    pub fn get_caret_location(&self) -> Position {
-        return self.caret_location;
+    pub fn get_position(&self) -> Position {
+        return self.pos.subtract(&self.offset);
     }
 
     pub fn load(&mut self, file_name: &str) {
@@ -51,10 +54,12 @@ impl View {
         }
 
         let vertical_center = height / 3;
+        let top = self.offset.row;
+        let left = self.offset.col;
+        let right = self.offset.col.saturating_add(width);
 
         for row in 0..height {
-            if let Some(line) = self.buffer.get_line(row, self.scroll_offset) {
-                let line = &line[..width.min(line.len())];
+            if let Some(line) = self.buffer.get_line(row.saturating_add(top), left..right) {
                 Self::render_text(row, line);
             } else if row == vertical_center && self.buffer.is_empty() {
                 Self::display_welcome_message(row, width);
@@ -99,57 +104,100 @@ impl View {
 
     fn handle_resize(&mut self, size: Size) {
         self.size = size;
+        self.scroll_into_view();
         self.needs_redraw = true;
     }
 
-    fn handle_move(&mut self, direction: Direction) {
-        let Size { height, width } = Terminal::size().unwrap_or_default();
-        let Position { mut row, mut col } = self.caret_location;
+    fn handle_move(&mut self, dir: Direction) {
+        self.update_pos(dir);
+        self.scroll_into_view();
+    }
 
-        match direction {
-            Direction::Left => {
-                if col == 0 {
-                    self.scroll_offset.col = self.scroll_offset.col.saturating_sub(1);
-                    self.needs_redraw = true;
-                }
-                col = col.saturating_sub(1);
-            }
-            Direction::Right => {
-                if col == width.saturating_sub(1) {
-                    self.scroll_offset.col = self.scroll_offset.col.saturating_add(1);
-                    self.needs_redraw = true;
-                }
-                col = col.saturating_add(1).min(width.saturating_sub(1));
-            }
+    fn update_pos(&mut self, dir: Direction) {
+        let Size { height, .. } = self.size;
+        let Position { mut row, mut col } = self.pos;
+
+        match dir {
             Direction::Up => {
-                if row == 0 {
-                    self.scroll_offset.row = self.scroll_offset.row.saturating_sub(1);
-                    self.needs_redraw = true;
-                }
                 row = row.saturating_sub(1);
+                col = self.max_col.min(self.buffer.row_len(row));
+            }
+            Direction::Left => {
+                if col == 0 && row == 0 {
+                    return;
+                } else if col == 0 {
+                    row -= 1;
+                    col = self.buffer.row_len(row);
+                } else {
+                    col -= 1;
+                }
+                self.max_col = self.max_col.max(col);
             }
             Direction::Down => {
-                if row == height.saturating_sub(1) {
-                    self.scroll_offset.row = self.scroll_offset.row.saturating_add(1);
-                    self.needs_redraw = true;
+                row = self.buffer.len().min(row + 1);
+                col = self.max_col.min(self.buffer.row_len(row));
+            }
+            Direction::Right => {
+                if col == 0 && row == self.buffer.len() {
+                    return;
+                } else if col == self.buffer.row_len(row) {
+                    row += 1;
+                    col = 0;
+                } else {
+                    col += 1;
                 }
-                row = row.saturating_add(1).min(height.saturating_sub(1));
+                self.max_col = self.max_col.max(col);
+            }
+            Direction::PageUp => {
+                row = row.saturating_add(1).saturating_sub(height);
+                col = self.buffer.row_len(row).min(col);
             }
             Direction::Home => {
                 col = 0;
-            }
-            Direction::End => {
-                col = width.saturating_sub(1);
-            }
-            Direction::PageUp => {
-                row = 0;
+                self.max_col = 0;
             }
             Direction::PageDown => {
-                row = height.saturating_sub(1);
+                row = self
+                    .buffer
+                    .len()
+                    .min(row.saturating_add(height).saturating_sub(1));
+                col = self.buffer.row_len(row).min(col);
+            }
+            Direction::End => {
+                col = self.buffer.row_len(row);
+                self.max_col = col;
             }
         }
 
-        self.caret_location.row = row;
-        self.caret_location.col = col;
+        self.pos.row = row;
+        self.pos.col = col;
+    }
+
+    fn scroll_into_view(&mut self) {
+        let Size { height, width } = self.size;
+        let Position { row, col } = self.pos;
+        let Position {
+            row: mut s_row,
+            col: mut s_col,
+        } = self.offset;
+
+        // Horizontal Fix
+        if row < s_row {
+            s_row = row;
+        } else if row >= s_row.saturating_add(height) {
+            s_row = row.saturating_add(1).saturating_sub(height);
+        }
+
+        // Vertical Fix
+        if col < s_col {
+            s_col = col;
+        } else if col >= s_col.saturating_add(width) {
+            s_col = col.saturating_add(1).saturating_sub(width);
+        }
+
+        self.needs_redraw = self.offset.row != s_row || self.offset.col != s_col;
+
+        self.offset.row = s_row;
+        self.offset.col = s_col;
     }
 }

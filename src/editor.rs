@@ -1,5 +1,6 @@
 mod buffer;
 mod editorcommand;
+mod position;
 mod terminal;
 mod view;
 
@@ -80,10 +81,7 @@ impl Editor {
         };
 
         if !should_process {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Received and discarded unsupported or non-press event");
-            }
+            return;
         }
 
         match EditorCommand::try_from(event) {
@@ -94,12 +92,7 @@ impl Editor {
                     self.view.handle_command(command);
                 }
             }
-            Err(err) => {
-                #[cfg(debug_assertions)]
-                {
-                    panic!("Could not handle command: {err}");
-                }
-            }
+            Err(_) => {}
         }
     }
 
@@ -107,7 +100,7 @@ impl Editor {
         let _ = Terminal::hide_caret();
 
         self.view.render();
-        let _ = Terminal::move_caret_to(self.view.get_caret_location());
+        let _ = Terminal::move_caret_to(self.view.get_position());
 
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();

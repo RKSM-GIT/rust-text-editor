@@ -3,14 +3,14 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use super::terminal::Size;
 
 pub enum Direction {
-    PageUp,
-    PageDown,
-    Home,
-    End,
     Up,
     Left,
-    Right,
     Down,
+    Right,
+    PageUp,
+    Home,
+    PageDown,
+    End,
 }
 
 pub enum EditorCommand {

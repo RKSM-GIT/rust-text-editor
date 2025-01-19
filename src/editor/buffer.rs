@@ -1,4 +1,4 @@
-use super::terminal::Position;
+use std::ops::Range;
 
 pub struct Buffer {
     lines: Vec<String>,
@@ -17,15 +17,28 @@ impl Buffer {
         self.lines.is_empty()
     }
 
-    pub fn get_line(&self, row: usize, offset: Position) -> Option<&str> {
-        if row + offset.row >= self.lines.len() {
+    pub fn get_line(&self, row: usize, range: Range<usize>) -> Option<&str> {
+        if row >= self.len() {
             return None;
         }
 
-        if offset.col >= self.lines[row].len() {
+        let row_len = self.row_len(row);
+        if range.start >= row_len {
             return Some("");
         }
 
-        return Some(&self.lines[row][offset.col..]);
+        return Some(&self.lines[row][range.start..range.end.min(row_len)]);
+    }
+
+    pub fn len(&self) -> usize {
+        self.lines.len()
+    }
+
+    pub fn row_len(&self, row: usize) -> usize {
+        if row == self.len() {
+            return 0;
+        }
+
+        self.lines[row].len()
     }
 }
