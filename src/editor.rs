@@ -1,4 +1,3 @@
-mod buffer;
 mod editorcommand;
 mod position;
 mod terminal;

@@ -1,9 +1,12 @@
+mod buffer;
+mod line;
+
 use super::{
-    buffer::Buffer,
     editorcommand::{Direction, EditorCommand},
-    position::Position,
+    position::{Location, Position},
     terminal::{Size, Terminal},
 };
+use buffer::Buffer;
 use std::fs;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
@@ -13,8 +16,8 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
-    pos: Position,
-    offset: Position,
+    text_location: Location,
+    scroll_offset: Position,
     max_col: usize,
 }
 
@@ -24,18 +27,14 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
-            pos: Position::default(),
-            offset: Position::default(),
+            text_location: Location::default(),
+            scroll_offset: Position::default(),
             max_col: 0,
         }
     }
 }
 
 impl View {
-    pub fn get_position(&self) -> Position {
-        return self.pos.subtract(&self.offset);
-    }
-
     pub fn load(&mut self, file_name: &str) {
         if let Ok(content) = fs::read_to_string(file_name) {
             self.buffer.load(content);
@@ -54,13 +53,13 @@ impl View {
         }
 
         let vertical_center = height / 3;
-        let top = self.offset.row;
-        let left = self.offset.col;
-        let right = self.offset.col.saturating_add(width);
+        let top = self.scroll_offset.row;
+        let left = self.scroll_offset.col;
+        let right = self.scroll_offset.col.saturating_add(width);
 
         for row in 0..height {
             if let Some(line) = self.buffer.get_line(row.saturating_add(top), left..right) {
-                Self::render_text(row, line);
+                Self::render_text(row, &line);
             } else if row == vertical_center && self.buffer.is_empty() {
                 Self::display_welcome_message(row, width);
             } else {
@@ -94,6 +93,19 @@ impl View {
         debug_assert!(res2.is_ok(), "Error Printing to terminal");
     }
 
+    pub fn caret_position(&self) -> Position {
+        self.text_location_to_position()
+            .saturating_sub(&self.scroll_offset)
+    }
+
+    fn text_location_to_position(&self) -> Position {
+        let row = self.text_location.line_index;
+        let col = self
+            .buffer
+            .row_width_until(row, self.text_location.grapheme_index);
+        Position { col, row }
+    }
+
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
             EditorCommand::Move(direction) => self.handle_move(direction),
@@ -113,91 +125,56 @@ impl View {
         self.scroll_into_view();
     }
 
-    fn update_pos(&mut self, dir: Direction) {
-        let Size { height, .. } = self.size;
-        let Position { mut row, mut col } = self.pos;
-
-        match dir {
-            Direction::Up => {
-                row = row.saturating_sub(1);
-                col = self.max_col.min(self.buffer.row_len(row));
-            }
-            Direction::Left => {
-                if col == 0 && row == 0 {
-                    return;
-                } else if col == 0 {
-                    row -= 1;
-                    col = self.buffer.row_len(row);
-                } else {
-                    col -= 1;
-                }
-                self.max_col = self.max_col.max(col);
-            }
-            Direction::Down => {
-                row = self.buffer.len().min(row + 1);
-                col = self.max_col.min(self.buffer.row_len(row));
-            }
-            Direction::Right => {
-                if col == 0 && row == self.buffer.len() {
-                    return;
-                } else if col == self.buffer.row_len(row) {
-                    row += 1;
-                    col = 0;
-                } else {
-                    col += 1;
-                }
-                self.max_col = self.max_col.max(col);
-            }
-            Direction::PageUp => {
-                row = row.saturating_add(1).saturating_sub(height);
-                col = self.buffer.row_len(row).min(col);
-            }
-            Direction::Home => {
-                col = 0;
-                self.max_col = 0;
-            }
-            Direction::PageDown => {
-                row = self
-                    .buffer
-                    .len()
-                    .min(row.saturating_add(height).saturating_sub(1));
-                col = self.buffer.row_len(row).min(col);
-            }
-            Direction::End => {
-                col = self.buffer.row_len(row);
-                self.max_col = col;
-            }
-        }
-
-        self.pos.row = row;
-        self.pos.col = col;
+    fn scroll_into_view(&mut self) {
+        let Position { row, col } = self.caret_position;
+        self.scroll_vertically(row);
+        self.scroll_horizontally(col);
     }
 
-    fn scroll_into_view(&mut self) {
-        let Size { height, width } = self.size;
-        let Position { row, col } = self.pos;
-        let Position {
-            row: mut s_row,
-            col: mut s_col,
-        } = self.offset;
+    fn scroll_vertically(&mut self, row: usize) {
+        let height = self.size.height;
+        let mut s_row = self.scroll_offset.row;
+        let mut offset_changed = false;
 
-        // Horizontal Fix
         if row < s_row {
             s_row = row;
-        } else if row >= s_row.saturating_add(height) {
-            s_row = row.saturating_add(1).saturating_sub(height);
+            offset_changed = true;
+        } else if row >= s_row + height {
+            s_row = row + 1 - height;
+            offset_changed = true;
         }
 
-        // Vertical Fix
+        self.needs_redraw |= offset_changed;
+        self.scroll_offset.row = s_row;
+    }
+
+    fn scroll_horizontally(&mut self, col: usize) {
+        let width = self.size.width;
+        let mut s_col = self.scroll_offset.col;
+        let mut offset_changed = false;
+
         if col < s_col {
             s_col = col;
-        } else if col >= s_col.saturating_add(width) {
-            s_col = col.saturating_add(1).saturating_sub(width);
+            offset_changed = true;
+        } else if col >= s_col + width {
+            s_col = col + 1 - width;
+            offset_changed = true;
         }
 
-        self.needs_redraw = self.offset.row != s_row || self.offset.col != s_col;
+        self.needs_redraw |= offset_changed;
+        self.scroll_offset.col = s_col;
+    }
 
-        self.offset.row = s_row;
-        self.offset.col = s_col;
+    fn update_pos(&mut self, dir: Direction) {
+        match dir {
+            Direction::Up => todo!(),
+            Direction::Left => todo!(),
+            Direction::Down => todo!(),
+            Direction::Right => todo!(),
+            Direction::PageUp => todo!(),
+            Direction::Home => todo!(),
+            Direction::PageDown => todo!(),
+            Direction::End => todo!(),
+        }
     }
 }
