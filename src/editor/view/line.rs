@@ -24,23 +24,20 @@ struct TextFragment {
 
 pub struct Line {
     fragments: Vec<TextFragment>,
-    total_width: usize,
+    width_prefix_sum: Vec<usize>,
 }
 
 impl From<&str> for Line {
     fn from(value: &str) -> Self {
-        let mut total_width = 0;
-        let fragments = value
+        let fragments: Vec<TextFragment> = value
             .graphemes(true)
             .map(|grapheme| {
-                let rendered_width = match grapheme.width() {
+                let unicode_width = grapheme.width();
+                let rendered_width = match unicode_width {
                     0 | 1 => GraphemeWidth::Half,
                     _ => GraphemeWidth::Full,
                 };
-
-                total_width += rendered_width.width();
-
-                let replacement = match grapheme.width() {
+                let replacement = match unicode_width {
                     0 => Some('.'),
                     _ => None,
                 };
@@ -53,9 +50,15 @@ impl From<&str> for Line {
             })
             .collect();
 
+        let mut width_prefix_sum = vec![0; fragments.len()];
+
+        for i in 1..fragments.len() {
+            width_prefix_sum[i] = width_prefix_sum[i - 1] + fragments[i - 1].rendered_width.width();
+        }
+
         Self {
             fragments,
-            total_width,
+            width_prefix_sum,
         }
     }
 }
@@ -96,15 +99,9 @@ impl Line {
         self.fragments.len()
     }
 
-    pub fn total_width(&self) -> usize {
-        self.total_width
-    }
-
     pub fn width_until(&self, grapheme_ind: usize) -> usize {
-        self.fragments
-            .iter()
-            .take(grapheme_ind)
-            .map(|x| x.rendered_width.width())
-            .sum()
+        self.width_prefix_sum
+            .get(grapheme_ind)
+            .map_or(0, |width| *width)
     }
 }

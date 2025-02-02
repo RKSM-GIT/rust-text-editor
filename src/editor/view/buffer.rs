@@ -28,18 +28,22 @@ impl Buffer {
     }
 
     pub fn row_width_until(&self, row: usize, grapheme_ind: usize) -> usize {
-        self.lines[row].width_until(grapheme_ind)
+        self.lines
+            .get(row)
+            .map_or(0, |line| line.width_until(grapheme_ind))
+    }
+
+    pub fn get_valid_grapheme_ind(&self, row: usize, grapheme_ind: usize) -> usize {
+        self.lines
+            .get(row)
+            .map_or(0, |line| line.grapheme_count().min(grapheme_ind))
     }
 
     pub fn height(&self) -> usize {
         self.lines.len()
     }
 
-    pub fn row_width(&self, row: usize) -> usize {
-        if row == self.height() {
-            return 0;
-        }
-
-        self.lines[row].total_width()
+    pub fn grapheme_count(&self, row: usize) -> usize {
+        self.lines.get(row).map_or(0, |line| line.grapheme_count())
     }
 }
