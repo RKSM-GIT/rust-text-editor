@@ -27,15 +27,15 @@ impl TryFrom<Event> for EditorCommand {
             Event::Key(KeyEvent {
                 code, modifiers, ..
             }) => match (code, modifiers) {
-                (KeyCode::Char('q'), KeyModifiers::CONTROL) => Ok(EditorCommand::Quit),
-                (KeyCode::Up, _) => Ok(EditorCommand::Move(Direction::Up)),
-                (KeyCode::Right, _) => Ok(EditorCommand::Move(Direction::Right)),
-                (KeyCode::Down, _) => Ok(EditorCommand::Move(Direction::Down)),
-                (KeyCode::Left, _) => Ok(EditorCommand::Move(Direction::Left)),
-                (KeyCode::End, _) => Ok(EditorCommand::Move(Direction::End)),
-                (KeyCode::Home, _) => Ok(EditorCommand::Move(Direction::Home)),
-                (KeyCode::PageDown, _) => Ok(EditorCommand::Move(Direction::PageDown)),
-                (KeyCode::PageUp, _) => Ok(EditorCommand::Move(Direction::PageUp)),
+                (KeyCode::Char('q'), KeyModifiers::CONTROL) => Ok(Self::Quit),
+                (KeyCode::Up, _) => Ok(Self::Move(Direction::Up)),
+                (KeyCode::Right, _) => Ok(Self::Move(Direction::Right)),
+                (KeyCode::Down, _) => Ok(Self::Move(Direction::Down)),
+                (KeyCode::Left, _) => Ok(Self::Move(Direction::Left)),
+                (KeyCode::End, _) => Ok(Self::Move(Direction::End)),
+                (KeyCode::Home, _) => Ok(Self::Move(Direction::Home)),
+                (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
+                (KeyCode::PageUp, _) => Ok(Self::Move(Direction::PageUp)),
                 _ => Err(format!("Key code not supported: {code:?}")),
             },
             Event::Resize(width, height) => Ok(EditorCommand::Resize(Size {

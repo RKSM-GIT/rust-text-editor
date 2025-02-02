@@ -32,15 +32,18 @@ impl From<&str> for Line {
         let fragments: Vec<TextFragment> = value
             .graphemes(true)
             .map(|grapheme| {
-                let unicode_width = grapheme.width();
-                let rendered_width = match unicode_width {
-                    0 | 1 => GraphemeWidth::Half,
-                    _ => GraphemeWidth::Full,
-                };
-                let replacement = match unicode_width {
-                    0 => Some('.'),
-                    _ => None,
-                };
+                let (replacement, rendered_width) = Self::replacement_character(grapheme)
+                    .map_or_else(
+                        || {
+                            let unicode_width = grapheme.width();
+                            let rendered_width = match unicode_width {
+                                0 | 1 => GraphemeWidth::Half,
+                                _ => GraphemeWidth::Full,
+                            };
+                            (None, rendered_width)
+                        },
+                        |replacement| (Some(replacement), GraphemeWidth::Half),
+                    );
 
                 TextFragment {
                     grapheme: grapheme.to_string(),
@@ -50,9 +53,9 @@ impl From<&str> for Line {
             })
             .collect();
 
-        let mut width_prefix_sum = vec![0; fragments.len()];
+        let mut width_prefix_sum = vec![0; fragments.len() + 1];
 
-        for i in 1..fragments.len() {
+        for i in 1..=fragments.len() {
             width_prefix_sum[i] = width_prefix_sum[i - 1] + fragments[i - 1].rendered_width.width();
         }
 
@@ -103,5 +106,27 @@ impl Line {
         self.width_prefix_sum
             .get(grapheme_ind)
             .map_or(0, |width| *width)
+    }
+
+    fn replacement_character(s: &str) -> Option<char> {
+        if s == " " {
+            None
+        } else if s == "\t" {
+            Some(' ')
+        } else if s.width() > 0 && s.trim().is_empty() {
+            Some('␣')
+        } else if s.width() == 0 {
+            let mut iterator = s.chars();
+            if let Some(ch) = iterator.next() {
+                if ch.is_control() && iterator.next().is_none() {
+                    return Some('▯');
+                } else {
+                    return Some(' ');
+                }
+            }
+            Some('.')
+        } else {
+            None
+        }
     }
 }

@@ -4,5 +4,5 @@ mod editor;
 use editor::Editor;
 
 fn main() {
-    Editor::new().unwrap().run();
+    Editor::new().unwrap().repl();
 }

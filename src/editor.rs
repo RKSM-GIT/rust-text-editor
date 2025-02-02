@@ -48,12 +48,7 @@ impl Editor {
         }));
     }
 
-    pub fn run(&mut self) {
-        self.repl();
-        Terminal::terminate().unwrap();
-    }
-
-    fn repl(&mut self) {
+    pub fn repl(&mut self) {
         loop {
             self.refresh_screen();
             if self.should_quit {
@@ -91,7 +86,12 @@ impl Editor {
                     self.view.handle_command(command);
                 }
             }
-            Err(_) => {}
+            Err(err) => {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Could not handle command: {err}");
+                }
+            }
         }
     }
 

@@ -20,11 +20,9 @@ impl Buffer {
     }
 
     pub fn get_line(&self, row: usize, range: Range<usize>) -> Option<String> {
-        if row >= self.height() {
-            return None;
-        }
-
-        return Some(self.lines[row].get(range));
+        self.lines
+            .get(row)
+            .map_or(None, |line| Some(line.get(range)))
     }
 
     pub fn row_width_until(&self, row: usize, grapheme_ind: usize) -> usize {

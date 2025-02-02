@@ -123,7 +123,7 @@ impl View {
         let col = self
             .buffer
             .row_width_until(row, self.text_location.grapheme_index);
-        Position { col, row }
+        Position { row, col }
     }
 
     fn scroll_vertically(&mut self, row: usize) {
@@ -139,7 +139,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.needs_redraw |= offset_changed;
+        self.needs_redraw = self.needs_redraw || offset_changed;
         self.scroll_offset.row = s_row;
     }
 
@@ -156,7 +156,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.needs_redraw |= offset_changed;
+        self.needs_redraw = self.needs_redraw || offset_changed;
         self.scroll_offset.col = s_col;
     }
 
