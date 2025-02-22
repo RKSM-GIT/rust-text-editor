@@ -169,9 +169,9 @@ impl View {
             Direction::Down => self.move_down(1),
             Direction::Right => self.move_right(),
             Direction::PageUp => self.move_up(height.saturating_sub(1)),
-            Direction::Home => self.move_to_start_of_line(),
+            Direction::Home => self.home_action(),
             Direction::PageDown => self.move_down(height.saturating_sub(1)),
-            Direction::End => self.move_to_end_of_line(),
+            Direction::End => self.end_action(),
         }
 
         self.scroll_into_view();
@@ -216,6 +216,16 @@ impl View {
             self.text_location.grapheme_index += 1;
         }
 
+        self.max_grapheme_ind = self.text_location.grapheme_index;
+    }
+
+    fn home_action(&mut self) {
+        self.move_to_start_of_line();
+        self.max_grapheme_ind = self.text_location.grapheme_index;
+    }
+
+    fn end_action(&mut self) {
+        self.move_to_end_of_line();
         self.max_grapheme_ind = self.text_location.grapheme_index;
     }
 
