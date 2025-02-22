@@ -103,6 +103,9 @@ impl View {
             EditorCommand::Move(direction) => self.update_pos(direction),
             EditorCommand::Resize(size) => self.handle_resize(size),
             EditorCommand::Quit => {}
+            EditorCommand::Insert(c) => self.insert_char(c),
+            EditorCommand::Backspace => self.perform_backspace(),
+            EditorCommand::Delete => self.perform_delete(),
         }
     }
 
@@ -245,5 +248,49 @@ impl View {
         self.text_location.grapheme_index = self
             .buffer
             .get_valid_grapheme_ind(self.text_location.row, self.max_grapheme_ind);
+    }
+
+    fn insert_char(&mut self, c: char) {
+        let mut has_len_increased = false;
+
+        self.buffer.insert_char(c, self.text_location.row, self.text_location.grapheme_index, &mut has_len_increased);
+
+        if has_len_increased {
+            self.move_right();
+        }
+        self.needs_redraw = true;
+        self.scroll_into_view();
+    }
+
+    fn perform_backspace(&mut self) {
+        let Location { row, grapheme_index } = self.text_location;
+
+        if grapheme_index != 0 {
+            self.move_left();
+            self.buffer.delete_grapheme_at(row, grapheme_index-1);
+        } else {
+            self.move_left();
+            if row > 0 &&  row != self.buffer.height() {
+                self.buffer.delete_and_merge(row, row-1);
+            }
+        }
+
+        self.snap_to_valid_grapheme();
+        self.needs_redraw = true;
+        self.scroll_into_view();
+    }
+
+    fn perform_delete(&mut self) {
+        let Location { row, grapheme_index } = self.text_location;
+
+        if grapheme_index != self.buffer.grapheme_count(row) {
+            self.buffer.delete_grapheme_at(row, grapheme_index);
+        } else if row < self.buffer.height().saturating_sub(1) {
+            self.buffer.delete_and_merge(row+1, row);
+        }
+
+        self.snap_to_valid_grapheme();
+        self.needs_redraw = true;
+        self.scroll_into_view();
     }
 }

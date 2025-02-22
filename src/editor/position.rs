@@ -13,7 +13,7 @@ impl Position {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Location {
     pub grapheme_index: usize,
     pub row: usize,

@@ -24,17 +24,23 @@ struct TextFragment {
 
 pub struct Line {
     fragments: Vec<TextFragment>,
-    width_prefix_sum: Vec<usize>,
 }
 
 impl From<&str> for Line {
     fn from(value: &str) -> Self {
-        let fragments: Vec<TextFragment> = value
+        let fragments: Vec<TextFragment> = Self::str_to_fragments(value);
+        Self { fragments }
+    }
+}
+
+impl Line {
+    fn str_to_fragments(value: &str) -> Vec<TextFragment> {
+        value
             .graphemes(true)
             .map(|grapheme| {
                 let (replacement, rendered_width) = Self::replacement_character(grapheme)
-                    .map_or_else(
-                        || {
+                    .map_or(
+                        {
                             let unicode_width = grapheme.width();
                             let rendered_width = match unicode_width {
                                 0 | 1 => GraphemeWidth::Half,
@@ -51,22 +57,9 @@ impl From<&str> for Line {
                     replacement,
                 }
             })
-            .collect();
+            .collect()
+    } 
 
-        let mut width_prefix_sum = vec![0; fragments.len() + 1];
-
-        for i in 1..=fragments.len() {
-            width_prefix_sum[i] = width_prefix_sum[i - 1] + fragments[i - 1].rendered_width.width();
-        }
-
-        Self {
-            fragments,
-            width_prefix_sum,
-        }
-    }
-}
-
-impl Line {
     pub fn get(&self, range: Range<usize>) -> String {
         let mut res = String::new();
         let (l, r) = (range.start, range.end);
@@ -102,10 +95,12 @@ impl Line {
         self.fragments.len()
     }
 
-    pub fn width_until(&self, grapheme_ind: usize) -> usize {
-        self.width_prefix_sum
-            .get(grapheme_ind)
-            .map_or(0, |width| *width)
+    pub fn width_until(&self, grapheme_index: usize) -> usize {
+        self.fragments
+            .iter()
+            .take(grapheme_index)
+            .map(|fragment| fragment.rendered_width.width())
+            .sum()
     }
 
     fn replacement_character(s: &str) -> Option<char> {
@@ -128,5 +123,52 @@ impl Line {
         } else {
             None
         }
+    }
+
+    pub fn insert_char(&mut self, c: char, grapheme_index: usize) {
+        let mut new_str = String::new();
+        let mut has_pushed = false;
+
+        for (ind, fragment) in self.fragments.iter().enumerate() {
+            if ind == grapheme_index {
+                new_str.push(c);
+                has_pushed = true;
+            }
+            new_str.push_str(&fragment.grapheme);
+        }
+
+        if !has_pushed {
+            new_str.push(c);
+        }
+
+        self.fragments = Self::str_to_fragments(&new_str);
+    }
+
+    pub fn delete_grapheme_at(&mut self, grapheme_index: usize) {
+        let mut new_str = String::new();
+
+        for (ind, fragment) in self.fragments.iter().enumerate() {
+            if ind != grapheme_index {
+                new_str.push_str(&fragment.grapheme);
+            }
+        }
+
+        self.fragments = Self::str_to_fragments(&new_str);
+    }
+
+    pub fn as_string(&self) -> String {
+        let mut res = String::new();
+
+        for TextFragment { grapheme, .. } in self.fragments.iter() {
+            res.push_str(grapheme);
+        }
+
+        res
+    }
+
+    pub fn append_str(&mut self, s: &str) {
+        let mut res = self.as_string();
+        res.push_str(s);
+        self.fragments = Self::str_to_fragments(&res);
     }
 }

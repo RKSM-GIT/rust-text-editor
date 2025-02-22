@@ -9,6 +9,8 @@ use std::io::Error;
 use std::panic;
 use terminal::Terminal;
 use view::View;
+use simplelog::{WriteLogger, LevelFilter, Config};
+use std::fs::File;
 
 pub struct Editor {
     should_quit: bool,
@@ -17,6 +19,7 @@ pub struct Editor {
 
 impl Editor {
     pub fn new() -> Result<Self, Error> {
+        Self::initialize_logger();
         Self::set_panic_printing();
         Terminal::initialize()?;
 
@@ -30,6 +33,14 @@ impl Editor {
             should_quit: false,
             view,
         })
+    }
+
+    fn initialize_logger() {
+        WriteLogger::init(
+            LevelFilter::Debug,
+            Config::default(),
+            File::create("editor.log").unwrap(),
+        ).unwrap();
     }
 
     fn set_panic_printing() {
@@ -78,19 +89,11 @@ impl Editor {
             return;
         }
 
-        match EditorCommand::try_from(event) {
-            Ok(command) => {
-                if matches!(command, EditorCommand::Quit) {
-                    self.should_quit = true;
-                } else {
-                    self.view.handle_command(command);
-                }
-            }
-            Err(err) => {
-                #[cfg(debug_assertions)]
-                {
-                    panic!("Could not handle command: {err}");
-                }
+        if let Ok(command) = EditorCommand::try_from(event) {
+            if matches!(command, EditorCommand::Quit) {
+                self.should_quit = true;
+            } else {
+                self.view.handle_command(command);
             }
         }
     }
