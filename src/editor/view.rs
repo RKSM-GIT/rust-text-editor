@@ -7,7 +7,6 @@ use super::{
     terminal::{Size, Terminal},
 };
 use buffer::Buffer;
-use std::fs;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -36,10 +35,8 @@ impl Default for View {
 
 impl View {
     pub fn load(&mut self, file_name: &str) {
-        if let Ok(content) = fs::read_to_string(file_name) {
-            self.buffer.load(content);
-            self.needs_redraw = true;
-        }
+        self.buffer.load(file_name);
+        self.needs_redraw = true;
     }
 
     pub fn render(&mut self) {
@@ -106,7 +103,14 @@ impl View {
             EditorCommand::Insert(c) => self.insert_char(c),
             EditorCommand::Backspace => self.perform_backspace(),
             EditorCommand::Delete => self.perform_delete(),
+            EditorCommand::Enter => self.perform_newline(),
+            EditorCommand::Tab => self.insert_char('\t'),
+            EditorCommand::Save => self.save(),
         }
+    }
+
+    fn save(&self) {
+        let _ = self.buffer.save();
     }
 
     fn handle_resize(&mut self, size: Size) {
@@ -290,6 +294,17 @@ impl View {
         }
 
         self.snap_to_valid_grapheme();
+        self.needs_redraw = true;
+        self.scroll_into_view();
+    }
+
+    fn perform_newline(&mut self) {
+        let Location { row, grapheme_index } = self.text_location;
+        let row_merge = self.buffer.height().min(row + 1);
+
+        self.buffer.split_and_merge(row, grapheme_index, row_merge);
+
+        self.move_right();
         self.needs_redraw = true;
         self.scroll_into_view();
     }

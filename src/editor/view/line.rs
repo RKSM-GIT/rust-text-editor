@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{fmt, ops::Range};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -16,7 +16,7 @@ impl GraphemeWidth {
     }
 }
 
-struct TextFragment {
+pub struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
     replacement: Option<char>,
@@ -33,7 +33,22 @@ impl From<&str> for Line {
     }
 }
 
+impl fmt::Display for Line {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let result: String = self
+            .fragments
+            .iter()
+            .map(|fragment| fragment.grapheme.clone())
+            .collect();
+        write!(formatter, "{result}")
+    }
+}
 impl Line {
+
+    pub fn new(fragments: Vec<TextFragment>) -> Self {
+        Self { fragments }
+    }
+    
     fn str_to_fragments(value: &str) -> Vec<TextFragment> {
         value
             .graphemes(true)
@@ -171,4 +186,8 @@ impl Line {
         res.push_str(s);
         self.fragments = Self::str_to_fragments(&res);
     }
+
+    pub fn split(&mut self, grapheme_index: usize) -> Vec<TextFragment> {
+        self.fragments.split_off(grapheme_index)
+    }    
 }

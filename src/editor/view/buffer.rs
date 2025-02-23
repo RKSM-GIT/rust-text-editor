@@ -1,18 +1,32 @@
-use std::ops::Range;
+use std::{fs::{self, File}, io::{Error, Write}, ops::Range};
 
 use super::line::Line;
 
 pub struct Buffer {
     lines: Vec<Line>,
+    file_name: Option<String>,
 }
 
 impl Buffer {
     pub fn default() -> Self {
-        Buffer { lines: vec![] }
+        Buffer { lines: vec![], file_name: None }
+    }̥
+
+    pub fn load(&mut self, file_name: &str) {
+        if let Ok(content) = fs::read_to_string(file_name) {
+            self.lines = content.lines().map(|x| x.into()).collect();
+            self.file_name = Some(file_name.to_string());
+        }
     }
 
-    pub fn load(&mut self, content: String) {
-        self.lines = content.lines().map(|x| x.into()).collect();
+    pub fn save(&self) -> Result<(), Error> {
+        if let Some(file_name) = &self.file_name {
+            let mut file = File::create(file_name)?;
+            for line in &self.lines {
+                writeln!(file, "{line}")?;
+            }
+        }
+        Ok(())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -67,8 +81,24 @@ impl Buffer {
     }
 
     pub fn delete_and_merge(&mut self, row_del: usize, row_merge: usize) {
-        let del_line_as_str = self.lines.get_mut(row_del).map_or(String::new(), |line| line.as_string());
+        let del_line_as_str = self.lines
+            .get_mut(row_del)
+            .map_or(
+                String::new(), 
+                |line| line.as_string()
+            );
+
         self.lines.get_mut(row_merge).unwrap().append_str(&del_line_as_str);
         self.lines.remove(row_del);
+    }
+
+    pub fn split_and_merge(&mut self, row_split: usize, split_ind: usize, row_merge: usize) {
+        let splitted_fragments = self.lines
+            .get_mut(row_split)
+            .map_or(
+                Vec::new(), 
+                |line| line.split(split_ind)
+            );
+        self.lines.insert(row_merge, Line::new(splitted_fragments));
     }
 }
