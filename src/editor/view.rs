@@ -2,9 +2,7 @@ mod buffer;
 mod line;
 
 use super::{
-    editorcommand::{Direction, EditorCommand},
-    position::{Location, Position},
-    terminal::{Size, Terminal},
+    editorcommand::{Direction, EditorCommand}, position::{Location, Position}, statusbar::DocumentStatus, terminal::{Size, Terminal}
 };
 use buffer::Buffer;
 
@@ -34,6 +32,31 @@ impl Default for View {
 }
 
 impl View {
+    pub fn new(margin_bottom: usize) -> Self {
+        let terminal_size = Terminal::size().unwrap_or_default();
+
+        Self {
+            buffer: Buffer::default(),
+            needs_redraw: true,
+            size: Size { 
+                height: terminal_size.height.saturating_sub(margin_bottom), 
+                width: terminal_size.width 
+            },
+            text_location: Location::default(),
+            scroll_offset: Position::default(),
+            max_grapheme_ind: 0,
+        }
+    }
+
+    pub fn get_status(&self) -> DocumentStatus {
+        DocumentStatus {
+            total_lines: self.buffer.height(),
+            curr_line_ind: self.text_location.row,
+            is_modified: self.buffer.is_dirty(),
+            file_name: self.buffer.get_file_name(),
+        }
+    }
+
     pub fn load(&mut self, file_name: &str) {
         self.buffer.load(file_name);
         self.needs_redraw = true;
@@ -109,7 +132,7 @@ impl View {
         }
     }
 
-    fn save(&self) {
+    fn save(&mut self) {
         let _ = self.buffer.save();
     }
 

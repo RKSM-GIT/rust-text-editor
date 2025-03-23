@@ -5,12 +5,21 @@ use super::line::Line;
 pub struct Buffer {
     lines: Vec<Line>,
     file_name: Option<String>,
+    dirty: bool,
 }
 
 impl Buffer {
     pub fn default() -> Self {
-        Buffer { lines: vec![], file_name: None }
-    }̥
+        Buffer { lines: vec![], file_name: None, dirty: false }
+    }
+
+    pub fn get_file_name(&self) -> Option<String> {
+        self.file_name.clone()
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
 
     pub fn load(&mut self, file_name: &str) {
         if let Ok(content) = fs::read_to_string(file_name) {
@@ -19,12 +28,13 @@ impl Buffer {
         }
     }
 
-    pub fn save(&self) -> Result<(), Error> {
+    pub fn save(&mut self) -> Result<(), Error> {
         if let Some(file_name) = &self.file_name {
             let mut file = File::create(file_name)?;
             for line in &self.lines {
                 writeln!(file, "{line}")?;
             }
+            self.dirty = false;
         }
         Ok(())
     }
@@ -70,6 +80,7 @@ impl Buffer {
                 self.lines.push(Line::from(s.as_str()));
             },
         }
+        self.dirty = true;
 
         let new_len = self.lines.get(row).map_or(0, |line| line.grapheme_count());
 
@@ -78,6 +89,7 @@ impl Buffer {
 
     pub fn delete_grapheme_at(&mut self, row: usize, grapheme_index: usize) {
         self.lines.get_mut(row).map_or_else(|| {}, |line| line.delete_grapheme_at(grapheme_index));
+        self.dirty = true;
     }
 
     pub fn delete_and_merge(&mut self, row_del: usize, row_merge: usize) {
@@ -90,6 +102,7 @@ impl Buffer {
 
         self.lines.get_mut(row_merge).unwrap().append_str(&del_line_as_str);
         self.lines.remove(row_del);
+        self.dirty = true;
     }
 
     pub fn split_and_merge(&mut self, row_split: usize, split_ind: usize, row_merge: usize) {
@@ -100,5 +113,6 @@ impl Buffer {
                 |line| line.split(split_ind)
             );
         self.lines.insert(row_merge, Line::new(splitted_fragments));
+        self.dirty = true;
     }
 }
