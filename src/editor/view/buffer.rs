@@ -80,11 +80,11 @@ impl Buffer {
                 self.lines.push(Line::from(s.as_str()));
             },
         }
-        self.dirty = true;
 
         let new_len = self.lines.get(row).map_or(0, |line| line.grapheme_count());
 
         *has_len_increased = new_len > old_len;
+        self.dirty = true;
     }
 
     pub fn delete_grapheme_at(&mut self, row: usize, grapheme_index: usize) {

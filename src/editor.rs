@@ -13,6 +13,7 @@ use terminal::Terminal;
 use view::View;
 use simplelog::{WriteLogger, LevelFilter, Config};
 use std::fs::File;
+use log::error;
 
 pub struct Editor {
     should_quit: bool,
@@ -73,6 +74,7 @@ impl Editor {
             match event::read() {
                 Ok(event) => self.evaluate_event(event),
                 Err(err) => {
+                    error!("Failed to read event: {err:?}");
                     #[cfg(debug_assertions)]
                     {
                         panic!("Could not read event: {err:?}");
@@ -109,20 +111,36 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
-        let _ = Terminal::hide_caret();
+        if let Err(e) = Terminal::hide_caret() {
+            error!("Failed to hide caret: {e:?}");
+        }
+
+
         self.view.render();
         self.status_bar.render();
-        let _ = Terminal::move_caret_to(self.view.caret_position());
-        let _ = Terminal::show_caret();
-        let _ = Terminal::execute();
+
+
+        if let Err(e) = Terminal::move_caret_to(self.view.caret_position()) {
+            error!("Failed to move caret: {e:?}");
+        }
+        if let Err(e) = Terminal::show_caret() {
+            error!("Failed to show caret: {e:?}");
+        }
+        if let Err(e) = Terminal::execute() {
+            error!("Failed to execute terminal commands: {e:?}");
+        }
     }
 }
 
 impl Drop for Editor {
     fn drop(&mut self) {
-        let _ = Terminal::terminate();
+        if let Err(e) = Terminal::terminate() {
+            error!("Failed to terminate terminal: {e:?}");
+        }
         if self.should_quit {
-            let _ = Terminal::print("Goodbye.\r\n");
+            if let Err(e) = Terminal::print("Goodbye.\r\n") {
+                error!("Failed to print goodbye message: {e:?}");
+            }
         }
     }
 }

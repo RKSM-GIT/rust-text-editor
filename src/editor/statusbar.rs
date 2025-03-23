@@ -35,7 +35,7 @@ impl StatusBar {
     }
 
     pub fn update_status(&mut self, new_status: DocumentStatus) {
-        if new_status != self.curr_status {
+        if new_status.is_modified {
             self.curr_status = new_status;
             self.needs_redraw = true;
         }
@@ -50,7 +50,7 @@ impl StatusBar {
         status.truncate(self.width);
         
         let result = Terminal::print_row(self.position_y, &status);
-        debug_assert!(result.is_ok(), "Failed tp render status bar");
+        debug_assert!(result.is_ok(), "Failed to render status bar");
         
         self.needs_redraw = false;
     }
