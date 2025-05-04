@@ -10,10 +10,12 @@ mod uicomponent;
 
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use editorcommand::EditorCommand;
+use messagebar::MessageBar;
 use statusbar::StatusBar;
+use uicomponent::UiComponent;
 use std::io::Error;
 use std::panic;
-use terminal::Terminal;
+use terminal::{Size, Terminal};
 use view::View;
 use simplelog::{WriteLogger, LevelFilter, Config};
 use std::fs::File;
@@ -22,10 +24,13 @@ use log::error;
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
     status_bar: StatusBar,
+    message_bar: MessageBar,
+    terminal_size: Size,
     title: String,
 }
 
@@ -35,21 +40,37 @@ impl Editor {
         Self::set_panic_printing();
         Terminal::initialize()?;
 
-        let mut editor = Self {
-            should_quit: false,
-            view: View::new(2),
-            status_bar: StatusBar::new(1),
-            title: String::new(),
-        };
+        let mut editor = Self::default();
+        let size = Terminal::size()?;
+        editor.resize(size);
 
         let args: Vec<String> = std::env::args().collect();
         if let Some(file_name) = args.get(1) {
             editor.view.load(file_name);
         }
 
+        editor.message_bar.update_message("HELP: Ctrl-S = save | Ctrl-Q = quit".to_string());
         editor.refresh_status();
 
         Ok(editor)
+    }
+
+    fn resize(&mut self, size: Size) {
+        self.terminal_size = size;
+        self.view.resize(Size {
+            height: size.height.saturating_sub(2),
+            width: size.width,
+        });
+
+        self.message_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        });
+
+        self.status_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        });
     }
 
     pub fn refresh_status(&mut self) {
@@ -122,6 +143,8 @@ impl Editor {
         if let Ok(command) = EditorCommand::try_from(event) {
             if matches!(command, EditorCommand::Quit) {
                 self.should_quit = true;
+            } else if let EditorCommand::Resize(size) = command {
+                self.resize(size);
             } else {
                 self.view.handle_command(command);
                 if let EditorCommand::Resize(size) = command {
@@ -132,10 +155,23 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
+        }
         let _ = Terminal::hide_caret();
 
-        self.view.render();
-        self.status_bar.render();
+        self.message_bar
+            .render(self.terminal_size.height.saturating_sub(1));
+
+
+        if self.terminal_size.height > 1 {
+            self.status_bar
+                .render(self.terminal_size.height.saturating_sub(2));
+        }
+
+        if self.terminal_size.height > 2 {
+            self.view.render(0);
+        }
 
 
         if let Err(e) = Terminal::move_caret_to(self.view.caret_position()) {

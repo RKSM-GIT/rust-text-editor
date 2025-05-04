@@ -10,11 +10,13 @@ pub struct Buffer {
     pub dirty: bool,
 }
 
-impl Buffer {
-    pub fn default() -> Self {
+impl Default for Buffer {
+    fn default() -> Self {
         Buffer { lines: vec![], file_info: FileInfo::new(), dirty: false }
     }
+}
 
+impl Buffer {
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }

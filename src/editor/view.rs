@@ -2,56 +2,21 @@ mod buffer;
 mod line;
 
 use super::{
-    documentstatus::DocumentStatus, 
-    editorcommand::{Direction, EditorCommand}, 
-    position::{Location, Position}, 
-    terminal::{Size, Terminal},
-    NAME, VERSION
+    documentstatus::DocumentStatus, editorcommand::{Direction, EditorCommand}, position::{Location, Position}, terminal::{Size, Terminal}, uicomponent::UiComponent, NAME, VERSION
 };
 use buffer::Buffer;
 
+#[derive(Default)]
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
-    margin_bottom: usize,
     text_location: Location,
     scroll_offset: Position,
     max_grapheme_ind: usize,
 }
 
-impl Default for View {
-    fn default() -> Self {
-        Self {
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Terminal::size().unwrap_or_default(),
-            margin_bottom: 0,
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-            max_grapheme_ind: 0,
-        }
-    }
-}
-
 impl View {
-    pub fn new(margin_bottom: usize) -> Self {
-        let terminal_size = Terminal::size().unwrap_or_default();
-
-        Self {
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Size { 
-                height: terminal_size.height.saturating_sub(margin_bottom), 
-                width: terminal_size.width 
-            },
-            margin_bottom,
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-            max_grapheme_ind: 0,
-        }
-    }
-
     pub fn get_status(&self) -> DocumentStatus {
         DocumentStatus {
             total_lines: self.buffer.height(),
@@ -63,35 +28,7 @@ impl View {
 
     pub fn load(&mut self, file_name: &str) {
         self.buffer.load(file_name);
-        self.needs_redraw = true;
-    }
-
-    pub fn render(&mut self) {
-        if !self.needs_redraw || self.size.height == 0 {
-            return;
-        }
-
-        let Size { height, width } = self.size;
-        if height == 0 || width == 0 {
-            return;
-        }
-
-        let vertical_center = height / 3;
-        let top = self.scroll_offset.row;
-        let left = self.scroll_offset.col;
-        let right = self.scroll_offset.col.saturating_add(width);
-
-        for row in 0..height {
-            if let Some(line) = self.buffer.get_line(row.saturating_add(top), left..right) {
-                Self::render_text(row, &line);
-            } else if row == vertical_center && self.buffer.is_empty() {
-                Self::render_text(row, &Self::generate_welcome_message(width));
-            } else {
-                Self::render_text(row, "~");
-            }
-        }
-
-        self.needs_redraw = false;
+        self.mark_redraw(true);
     }
 
     fn render_text(row: usize, text: &str) {
@@ -124,7 +61,7 @@ impl View {
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
             EditorCommand::Move(direction) => self.update_pos(direction),
-            EditorCommand::Resize(size) => self.handle_resize(size),
+            EditorCommand::Resize(_) => {},
             EditorCommand::Quit => {}
             EditorCommand::Insert(c) => self.insert_char(c),
             EditorCommand::Backspace => self.perform_backspace(),
@@ -137,15 +74,6 @@ impl View {
 
     fn save(&mut self) {
         let _ = self.buffer.save();
-    }
-
-    fn handle_resize(&mut self, size: Size) {
-        self.size = Size {
-            width: size.width,
-            height: size.height.saturating_sub(self.margin_bottom)
-        };
-        self.scroll_into_view();
-        self.needs_redraw = true;
     }
 
     fn scroll_into_view(&mut self) {
@@ -175,7 +103,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.needs_redraw = self.needs_redraw || offset_changed;
+        self.mark_redraw(self.needs_redraw() || offset_changed);
         self.scroll_offset.row = s_row;
     }
 
@@ -192,7 +120,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.needs_redraw = self.needs_redraw || offset_changed;
+        self.mark_redraw(self.needs_redraw() || offset_changed);
         self.scroll_offset.col = s_col;
     }
 
@@ -291,7 +219,7 @@ impl View {
         if has_len_increased {
             self.move_right();
         }
-        self.needs_redraw = true;
+        self.mark_redraw(true);
         self.scroll_into_view();
     }
 
@@ -309,7 +237,7 @@ impl View {
         }
 
         self.snap_to_valid_grapheme();
-        self.needs_redraw = true;
+        self.mark_redraw(true);
         self.scroll_into_view();
     }
 
@@ -323,7 +251,7 @@ impl View {
         }
 
         self.snap_to_valid_grapheme();
-        self.needs_redraw = true;
+        self.mark_redraw(true);
         self.scroll_into_view();
     }
 
@@ -334,7 +262,48 @@ impl View {
         self.buffer.split_and_merge(row, grapheme_index, row_merge);
 
         self.move_right();
-        self.needs_redraw = true;
+        self.mark_redraw(true);
+        self.scroll_into_view();
+    }
+}
+
+impl UiComponent for View {
+    fn mark_redraw(&mut self, value: bool) {
+        self.needs_redraw = value;
+    }
+
+    fn needs_redraw(&self) -> bool {
+        self.needs_redraw
+    }
+
+    fn draw(&mut self, origin_y: usize) -> Result<(), std::io::Error> {
+        let Size { height, width } = self.size;
+        let end_y = origin_y.saturating_add(height);
+
+        let vertical_center = height / 3;
+        let top = self.scroll_offset.row;
+        let left = self.scroll_offset.col;
+        let right = self.scroll_offset.col.saturating_add(width);
+
+        for row in origin_y..end_y {
+            let line_idx = row
+                .saturating_sub(origin_y)
+                .saturating_add(top);
+
+            if let Some(line) = self.buffer.get_line(line_idx, left..right) {
+                Self::render_text(row, &line);
+            } else if row == vertical_center && self.buffer.is_empty() {
+                Self::render_text(row, &Self::generate_welcome_message(width));
+            } else {
+                Self::render_text(row, "~");
+            }
+        }
+
+        Ok(())
+    }
+
+    fn set_size(&mut self, size: Size) {
+        self.size = size;
         self.scroll_into_view();
     }
 }

@@ -2,7 +2,8 @@ use std::io::Error;
 
 use super::{terminal::{Size, Terminal}, uicomponent::UiComponent};
 
-struct MessageBar {
+#[derive(Default)]
+pub struct MessageBar {
     curr_message: String,
     needs_redraw: bool,
 }

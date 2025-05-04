@@ -7,7 +7,7 @@ use std::io::{stdout, Error, Write};
 
 use super::position::Position;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Eq, PartialEq)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
