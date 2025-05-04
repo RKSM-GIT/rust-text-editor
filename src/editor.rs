@@ -5,6 +5,8 @@ mod view;
 mod statusbar;
 mod documentstatus;
 mod file_info;
+mod messagebar;
+mod uicomponent;
 
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use editorcommand::EditorCommand;

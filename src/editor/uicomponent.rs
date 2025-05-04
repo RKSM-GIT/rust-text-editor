@@ -1,3 +1,7 @@
+use std::io::Error;
+
+use super::terminal::Size;
+
 pub trait UiComponent {
     // Marks this UI component as in need of redrawing (or not)
     fn mark_redraw(&mut self, value: bool);
