@@ -7,7 +7,7 @@ pub struct DocumentStatus {
 }
 
 impl DocumentStatus {
-    pub fn get_modified_string(&self) -> String {
+    pub fn get_modified_indicator_string(&self) -> String {
         if self.is_modified {
             "(modified)".to_string()
         } else {

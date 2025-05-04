@@ -1,12 +1,4 @@
-use super::terminal::{Size, Terminal};
-
-#[derive(Default, Eq, PartialEq, Debug)]
-pub struct DocumentStatus {
-    pub total_lines: usize,
-    pub curr_line_ind: usize,
-    pub is_modified: bool,
-    pub file_name: Option<String>,
-}
+use super::{documentstatus::DocumentStatus, terminal::{Size, Terminal}};
 
 pub struct StatusBar {
     curr_status: DocumentStatus,
@@ -14,44 +6,85 @@ pub struct StatusBar {
     margin_bottom: usize,
     width: usize,
     position_y: usize,
+    is_visible: bool,
 }
 
 impl StatusBar {
     pub fn new(margin_bottom: usize) -> Self {
         let size = Terminal::size().unwrap_or_default();
-        Self {
+        let mut status_bar = Self {
             curr_status: DocumentStatus::default(),
             needs_redraw: true,
             margin_bottom,
             width: size.width,
-            position_y: size.height.saturating_sub(margin_bottom).saturating_sub(1),
-        }
+            position_y: 0,
+            is_visible: false
+        };
+
+        status_bar.resize(size);
+        status_bar
     }
 
     pub fn resize(&mut self, size: Size) {
         self.width = size.width;
-        self.position_y = size.height.saturating_sub(self.margin_bottom).saturating_sub(1);
+        let mut position_y = 0;
+        let mut is_visible = false;
+
+        if let Some(result) = size.height
+            .checked_sub(self.margin_bottom)
+            .and_then(|x| x.checked_sub(1)) 
+        {
+            position_y = result;
+            is_visible = true;
+        }
+
+        self.position_y = position_y;
+        self.is_visible = is_visible;
         self.needs_redraw = true;
     }
 
     pub fn update_status(&mut self, new_status: DocumentStatus) {
-        if new_status.is_modified {
+        if new_status != self.curr_status {
             self.curr_status = new_status;
             self.needs_redraw = true;
         }
     }
 
     pub fn render(&mut self) {
-        if !self.needs_redraw {
+        if !self.needs_redraw || !self.is_visible {
             return;
         }
 
-        let mut status = format!("{:?}", self.curr_status);
-        status.truncate(self.width);
-        
-        let result = Terminal::print_row(self.position_y, &status);
-        debug_assert!(result.is_ok(), "Failed to render status bar");
-        
-        self.needs_redraw = false;
+        if let Ok(size) = Terminal::size() {
+            // Assemble the first part of the status bar
+            let line_count = self.curr_status.get_line_count_string();
+            let modified_indicator = self.curr_status.get_modified_indicator_string();
+
+            let beginning = format!(
+                "{} - {line_count} {modified_indicator}",
+                self.curr_status.file_name
+            );
+ 
+            // Assemble the whole status bar, with the position indicator at the back
+            let position_indicator = self.curr_status.get_position_indicator_string();
+            let remainder_len = size.width.saturating_sub(beginning.len());
+            let status = format!("{beginning}{position_indicator:>remainder_len$}");
+ 
+            // Only print out the status if it fits. 
+            // Otherwise write out an empty string to ensure the row is cleared.
+            let to_print = if status.len() <= size.width {
+                status
+            } else {
+                String::new()
+            };
+ 
+
+            let result = Terminal::print_inverted_row(
+                self.position_y, 
+                &to_print
+            );
+            debug_assert!(result.is_ok(), "Failed to render status bar");
+            self.needs_redraw = false;
+        }
     }
 }

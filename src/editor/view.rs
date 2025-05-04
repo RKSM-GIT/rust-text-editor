@@ -2,17 +2,19 @@ mod buffer;
 mod line;
 
 use super::{
-    editorcommand::{Direction, EditorCommand}, position::{Location, Position}, statusbar::DocumentStatus, terminal::{Size, Terminal}
+    documentstatus::DocumentStatus, 
+    editorcommand::{Direction, EditorCommand}, 
+    position::{Location, Position}, 
+    terminal::{Size, Terminal},
+    NAME, VERSION
 };
 use buffer::Buffer;
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    margin_bottom: usize,
     text_location: Location,
     scroll_offset: Position,
     max_grapheme_ind: usize,
@@ -24,6 +26,7 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
+            margin_bottom: 0,
             text_location: Location::default(),
             scroll_offset: Position::default(),
             max_grapheme_ind: 0,
@@ -42,6 +45,7 @@ impl View {
                 height: terminal_size.height.saturating_sub(margin_bottom), 
                 width: terminal_size.width 
             },
+            margin_bottom,
             text_location: Location::default(),
             scroll_offset: Position::default(),
             max_grapheme_ind: 0,
@@ -53,7 +57,7 @@ impl View {
             total_lines: self.buffer.height(),
             curr_line_ind: self.text_location.row,
             is_modified: self.buffer.is_dirty(),
-            file_name: self.buffer.get_file_name(),
+            file_name: format!("{}", self.buffer.file_info),
         }
     }
 
@@ -63,7 +67,7 @@ impl View {
     }
 
     pub fn render(&mut self) {
-        if !self.needs_redraw {
+        if !self.needs_redraw || self.size.height == 0 {
             return;
         }
 
@@ -81,7 +85,7 @@ impl View {
             if let Some(line) = self.buffer.get_line(row.saturating_add(top), left..right) {
                 Self::render_text(row, &line);
             } else if row == vertical_center && self.buffer.is_empty() {
-                Self::display_welcome_message(row, width);
+                Self::render_text(row, &Self::generate_welcome_message(width));
             } else {
                 Self::render_text(row, "~");
             }
@@ -96,21 +100,20 @@ impl View {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn display_welcome_message(row: usize, width: usize) {
-        let hecto_info = format!("{NAME} {VERSION}");
-        let info_len = hecto_info.len();
-        let col = if width / 2 >= (info_len - 1) / 2 {
-            width / 2 - (info_len - 1) / 2
-        } else {
-            0
-        };
-        let center_pos = Position { row, col };
+    fn generate_welcome_message(width: usize) -> String {
+        if width == 0 {
+            return String::new();
+        }
 
-        let res1 = Terminal::move_caret_to(center_pos);
-        let res2 = Terminal::print(&hecto_info);
+        let welcome_message = format!("{NAME} editor -- version {VERSION}");
+        let len = welcome_message.len();
+        let remaining_width = width.saturating_sub(1);
 
-        debug_assert!(res1.is_ok(), "Error Moving Carent");
-        debug_assert!(res2.is_ok(), "Error Printing to terminal");
+        // hide the welcome message if it doesn't fit entirely.
+        if remaining_width < len {
+            return "~".to_string();
+        }
+        format!("{:<1}{:^remaining_width$}", "~", welcome_message)
     }
 
     pub fn caret_position(&self) -> Position {
@@ -137,7 +140,10 @@ impl View {
     }
 
     fn handle_resize(&mut self, size: Size) {
-        self.size = size;
+        self.size = Size {
+            width: size.width,
+            height: size.height.saturating_sub(self.margin_bottom)
+        };
         self.scroll_into_view();
         self.needs_redraw = true;
     }

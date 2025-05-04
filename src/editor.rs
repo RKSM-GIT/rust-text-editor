@@ -3,6 +3,8 @@ mod position;
 mod terminal;
 mod view;
 mod statusbar;
+mod documentstatus;
+mod file_info;
 
 use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use editorcommand::EditorCommand;
@@ -15,10 +17,14 @@ use simplelog::{WriteLogger, LevelFilter, Config};
 use std::fs::File;
 use log::error;
 
+pub const NAME: &str = env!("CARGO_PKG_NAME");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct Editor {
     should_quit: bool,
     view: View,
     status_bar: StatusBar,
+    title: String,
 }
 
 impl Editor {
@@ -27,17 +33,31 @@ impl Editor {
         Self::set_panic_printing();
         Terminal::initialize()?;
 
-        let mut view = View::new(2);
+        let mut editor = Self {
+            should_quit: false,
+            view: View::new(2),
+            status_bar: StatusBar::new(1),
+            title: String::new(),
+        };
+
         let args: Vec<String> = std::env::args().collect();
         if let Some(file_name) = args.get(1) {
-            view.load(file_name);
+            editor.view.load(file_name);
         }
 
-        Ok(Self {
-            should_quit: false,
-            view,
-            status_bar: StatusBar::new(1),
-        })
+        editor.refresh_status();
+
+        Ok(editor)
+    }
+
+    pub fn refresh_status(&mut self) {
+        let status = self.view.get_status();
+        let title = format!("{} - {NAME}", status.file_name);
+        self.status_bar.update_status(status);
+
+        if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
+            self.title = title;
+        }
     }
 
     fn initialize_logger() {
@@ -82,8 +102,7 @@ impl Editor {
                 }
             }
 
-            let status = self.view.get_status();
-            self.status_bar.update_status(status);
+            self.refresh_status();
         }
     }
 
@@ -111,10 +130,7 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
-        if let Err(e) = Terminal::hide_caret() {
-            error!("Failed to hide caret: {e:?}");
-        }
-
+        let _ = Terminal::hide_caret();
 
         self.view.render();
         self.status_bar.render();

@@ -1,20 +1,18 @@
 use std::{fs::{self, File}, io::{Error, Write}, ops::Range};
 
+use crate::editor::file_info::FileInfo;
+
 use super::line::Line;
 
 pub struct Buffer {
-    lines: Vec<Line>,
-    file_name: Option<String>,
-    dirty: bool,
+    pub lines: Vec<Line>,
+    pub file_info: FileInfo,
+    pub dirty: bool,
 }
 
 impl Buffer {
     pub fn default() -> Self {
-        Buffer { lines: vec![], file_name: None, dirty: false }
-    }
-
-    pub fn get_file_name(&self) -> Option<String> {
-        self.file_name.clone()
+        Buffer { lines: vec![], file_info: FileInfo::new(), dirty: false }
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -24,13 +22,13 @@ impl Buffer {
     pub fn load(&mut self, file_name: &str) {
         if let Ok(content) = fs::read_to_string(file_name) {
             self.lines = content.lines().map(|x| x.into()).collect();
-            self.file_name = Some(file_name.to_string());
+            self.file_info = FileInfo::from(file_name);
         }
     }
 
     pub fn save(&mut self) -> Result<(), Error> {
-        if let Some(file_name) = &self.file_name {
-            let mut file = File::create(file_name)?;
+        if let Some(path) = &self.file_info.path {
+            let mut file = File::create(path)?;
             for line in &self.lines {
                 writeln!(file, "{line}")?;
             }

@@ -4,6 +4,14 @@ pub struct FileInfo {
     pub path: Option<PathBuf>,
 }
 
+impl FileInfo {
+    pub fn new() -> Self {
+        Self {
+            path: None,
+        }
+    }
+}
+
 impl From<&str> for FileInfo {
     fn from(file_name: &str) -> Self {
         Self {
