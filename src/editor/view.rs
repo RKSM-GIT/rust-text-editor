@@ -28,7 +28,7 @@ impl View {
 
     pub fn load(&mut self, file_name: &str) {
         self.buffer.load(file_name);
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
     }
 
     fn render_text(row: usize, text: &str) {
@@ -103,7 +103,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.mark_redraw(self.needs_redraw() || offset_changed);
+        self.set_needs_redraw(self.needs_redraw() || offset_changed);
         self.scroll_offset.row = s_row;
     }
 
@@ -120,7 +120,7 @@ impl View {
             offset_changed = true;
         }
 
-        self.mark_redraw(self.needs_redraw() || offset_changed);
+        self.set_needs_redraw(self.needs_redraw() || offset_changed);
         self.scroll_offset.col = s_col;
     }
 
@@ -219,7 +219,7 @@ impl View {
         if has_len_increased {
             self.move_right();
         }
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
         self.scroll_into_view();
     }
 
@@ -237,7 +237,7 @@ impl View {
         }
 
         self.snap_to_valid_grapheme();
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
         self.scroll_into_view();
     }
 
@@ -251,7 +251,7 @@ impl View {
         }
 
         self.snap_to_valid_grapheme();
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
         self.scroll_into_view();
     }
 
@@ -262,13 +262,13 @@ impl View {
         self.buffer.split_and_merge(row, grapheme_index, row_merge);
 
         self.move_right();
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
         self.scroll_into_view();
     }
 }
 
 impl UiComponent for View {
-    fn mark_redraw(&mut self, value: bool) {
+    fn set_needs_redraw(&mut self, value: bool) {
         self.needs_redraw = value;
     }
 
