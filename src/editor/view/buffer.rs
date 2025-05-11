@@ -21,11 +21,12 @@ impl Buffer {
         self.dirty
     }
 
-    pub fn load(&mut self, file_name: &str) {
-        if let Ok(content) = fs::read_to_string(file_name) {
-            self.lines = content.lines().map(|x| x.into()).collect();
-            self.file_info = FileInfo::from(file_name);
-        }
+    pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
+        let content = fs::read_to_string(file_name)?;
+        self.lines = content.lines().map(|x| x.into()).collect();
+        self.file_info = FileInfo::from(file_name);
+        
+        Ok(())
     }
 
     pub fn save(&mut self) -> Result<(), Error> {

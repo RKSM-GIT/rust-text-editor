@@ -1,8 +1,16 @@
 mod buffer;
 mod line;
 
+use std::io::Error;
+
 use super::{
-    documentstatus::DocumentStatus, editorcommand::{Direction, EditorCommand}, position::{Location, Position}, terminal::{Size, Terminal}, uicomponent::UiComponent, NAME, VERSION
+    command::{edit::EditCommand, moves::MoveCommand}, 
+    documentstatus::DocumentStatus, 
+    position::{Location, Position}, 
+    terminal::{Size, Terminal}, 
+    uicomponent::UiComponent, 
+    NAME, 
+    VERSION
 };
 use buffer::Buffer;
 
@@ -26,9 +34,10 @@ impl View {
         }
     }
 
-    pub fn load(&mut self, file_name: &str) {
-        self.buffer.load(file_name);
+    pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
+        self.buffer.load(file_name)?;
         self.set_needs_redraw(true);
+        Ok(())
     }
 
     fn render_text(row: usize, text: &str) {
@@ -58,22 +67,34 @@ impl View {
             .saturating_sub(&self.scroll_offset)
     }
 
-    pub fn handle_command(&mut self, command: EditorCommand) {
+    pub fn handle_move_command(&mut self, command: MoveCommand) {
+        let Size { height, .. } = self.size;
+
         match command {
-            EditorCommand::Move(direction) => self.update_pos(direction),
-            EditorCommand::Resize(_) => {},
-            EditorCommand::Quit => {}
-            EditorCommand::Insert(c) => self.insert_char(c),
-            EditorCommand::Backspace => self.perform_backspace(),
-            EditorCommand::Delete => self.perform_delete(),
-            EditorCommand::Enter => self.perform_newline(),
-            EditorCommand::Tab => self.insert_char('\t'),
-            EditorCommand::Save => self.save(),
+            MoveCommand::Up => self.move_up(1),
+            MoveCommand::Down => self.move_down(1),
+            MoveCommand::Left => self.move_left(),
+            MoveCommand::Right => self.move_right(),
+            MoveCommand::PageUp => self.move_up(height.saturating_sub(1)),
+            MoveCommand::PageDown => self.move_down(height.saturating_sub(1)),
+            MoveCommand::Home => self.home_action(),
+            MoveCommand::End => self.end_action(),
+        }
+
+        self.scroll_into_view();
+    }
+
+    pub fn handle_edit_command(&mut self, command: EditCommand) {
+        match command {
+            EditCommand::Insert(c) => self.insert_char(c),
+            EditCommand::InsertNewline => self.perform_newline(),
+            EditCommand::Delete => self.perform_backspace(),
+            EditCommand::DeleteBackward => self.perform_delete(),
         }
     }
 
-    fn save(&mut self) {
-        let _ = self.buffer.save();
+    pub fn save(&mut self) -> Result<(), Error> {
+        self.buffer.save()
     }
 
     fn scroll_into_view(&mut self) {
@@ -122,23 +143,6 @@ impl View {
 
         self.set_needs_redraw(self.needs_redraw() || offset_changed);
         self.scroll_offset.col = s_col;
-    }
-
-    fn update_pos(&mut self, dir: Direction) {
-        let Size { height, .. } = self.size;
-
-        match dir {
-            Direction::Up => self.move_up(1),
-            Direction::Left => self.move_left(),
-            Direction::Down => self.move_down(1),
-            Direction::Right => self.move_right(),
-            Direction::PageUp => self.move_up(height.saturating_sub(1)),
-            Direction::Home => self.home_action(),
-            Direction::PageDown => self.move_down(height.saturating_sub(1)),
-            Direction::End => self.end_action(),
-        }
-
-        self.scroll_into_view();
     }
 
     fn move_up(&mut self, step: usize) {
