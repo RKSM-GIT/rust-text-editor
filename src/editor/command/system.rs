@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::editor::terminal::Size;
+use crate::editor::size::Size;
 
 pub enum SystemCommand {
     Save,

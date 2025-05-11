@@ -1,17 +1,19 @@
 use crossterm::{
     cursor, queue, style::{self, Attribute},
-    terminal::{self, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
+    terminal::{
+        self, 
+        ClearType, 
+        DisableLineWrap, 
+        EnableLineWrap, 
+        EnterAlternateScreen, 
+        LeaveAlternateScreen, 
+        SetTitle
+    },
     Command,
 };
 use std::io::{stdout, Error, Write};
 
-use super::position::Position;
-
-#[derive(Default, Clone, Copy, Eq, PartialEq)]
-pub struct Size {
-    pub height: usize,
-    pub width: usize,
-}
+use super::{position::Position, size::Size};
 
 pub struct Terminal {}
 

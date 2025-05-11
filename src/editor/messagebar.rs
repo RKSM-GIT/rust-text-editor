@@ -4,7 +4,7 @@ use std::{io::Error, time::Instant};
 
 use message::Message;
 
-use super::{terminal::{Size, Terminal}, uicomponent::UiComponent};
+use super::{size::Size, terminal::Terminal, uicomponent::UiComponent};
 
 #[derive(Default, Debug)]
 pub struct MessageBar {

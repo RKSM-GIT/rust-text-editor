@@ -1,16 +1,11 @@
 mod buffer;
 mod line;
+mod file_info;
 
 use std::io::Error;
 
 use super::{
-    command::{edit::EditCommand, moves::MoveCommand}, 
-    documentstatus::DocumentStatus, 
-    position::{Location, Position}, 
-    terminal::{Size, Terminal}, 
-    uicomponent::UiComponent, 
-    NAME, 
-    VERSION
+    command::{edit::EditCommand, moves::MoveCommand}, documentstatus::DocumentStatus, position::{Location, Position}, size::Size, terminal::Terminal, uicomponent::UiComponent, NAME, VERSION
 };
 use buffer::Buffer;
 

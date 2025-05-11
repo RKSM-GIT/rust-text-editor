@@ -3,7 +3,7 @@ use edit::EditCommand;
 use moves::MoveCommand;
 use system::SystemCommand;
 
-use super::terminal::Size;
+use super::size::Size;
 
 pub mod moves;
 pub mod edit;

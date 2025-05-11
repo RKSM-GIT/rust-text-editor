@@ -1,8 +1,6 @@
 use std::{fs::{self, File}, io::{Error, Write}, ops::Range};
 
-use crate::editor::file_info::FileInfo;
-
-use super::line::Line;
+use super::{file_info::FileInfo, line::Line};
 
 pub struct Buffer {
     pub lines: Vec<Line>,
@@ -30,7 +28,7 @@ impl Buffer {
     }
 
     pub fn save(&mut self) -> Result<(), Error> {
-        if let Some(path) = &self.file_info.path {
+        if let Some(path) = &self.file_info.get_path() {
             let mut file = File::create(path)?;
             for line in &self.lines {
                 writeln!(file, "{line}")?;
