@@ -2,8 +2,6 @@
 
 A modern, terminal-based text editor written in Rust, inspired by nano. This editor provides a simple yet powerful interface for editing text files directly in your terminal.
 
-![Rust Text Editor Demo](https://via.placeholder.com/800x400?text=Rust+Text+Editor+Demo)
-
 ## Features
 
 - 🚀 Fast and efficient text editing
