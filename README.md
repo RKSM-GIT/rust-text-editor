@@ -24,7 +24,7 @@ A modern, terminal-based text editor written in Rust, inspired by nano. This edi
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/rust-text-editor.git
+git clone https://github.com/RKSM-GIT/rust-text-editor.git
 cd rust-text-editor
 ```
 
@@ -36,6 +36,25 @@ cargo build --release
 3. The executable will be available at `target/release/rust-text-editor`
 
 ## Usage
+
+### Starting the Editor
+
+You can start the editor in two ways:
+
+1. Start with an empty buffer:
+```bash
+cargo run
+```
+
+2. Open an existing file:
+```bash
+cargo run path/to/your/file.txt
+```
+
+For example, to open a file named `poem.txt`:
+```bash
+cargo run poem.txt
+```
 
 ### Basic Commands
 
