@@ -90,28 +90,9 @@ src/
 └── main.rs         # Entry point
 ```
 
-### Building for Development
-
-```bash
-cargo build
-```
-
-### Running Tests
-
-```bash
-cargo test
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Acknowledgments
 
+- Following tutorial by: [Phillip Flenker](https://philippflenker.com/)
 - Inspired by the nano text editor
 - Built with [crossterm](https://github.com/crossterm-rs/crossterm) for terminal manipulation
 - Uses [unicode-segmentation](https://github.com/unicode-rs/unicode-segmentation) for proper text handling
