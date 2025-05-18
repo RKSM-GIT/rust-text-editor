@@ -12,7 +12,7 @@ pub trait UiComponent {
     fn needs_redraw(&self) -> bool;
     
     // Method to actually draw the component, must be implemented by each component
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error>;
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error>;
 
     // Updates the size. Needs to be implemented by each component.
     fn set_size(&mut self, size: Size);

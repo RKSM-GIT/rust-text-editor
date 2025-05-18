@@ -27,7 +27,7 @@ impl UiComponent for StatusBar {
         self.needs_redraw
     }
 
-    fn draw(&mut self, origin_y: usize) -> Result<(), std::io::Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), std::io::Error> {
         // Assemble the first part of the status bar
         let line_count = self.curr_status.get_line_count_string();
         let modified_indicator = self.curr_status.get_modified_indicator_string();
@@ -51,7 +51,7 @@ impl UiComponent for StatusBar {
         };
 
 
-        Terminal::print_inverted_row(origin_y, &to_print)?;
+        Terminal::print_inverted_row(origin_row, &to_print)?;
 
         Ok(())
     }

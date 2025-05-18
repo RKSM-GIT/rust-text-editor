@@ -1,11 +1,17 @@
 mod buffer;
-mod line;
+pub mod line;
 mod file_info;
 
 use std::io::Error;
 
 use super::{
-    command::{edit::EditCommand, moves::MoveCommand}, documentstatus::DocumentStatus, position::{Location, Position}, size::Size, terminal::Terminal, uicomponent::UiComponent, NAME, VERSION
+    command::{edit::EditCommand, moves::MoveCommand}, 
+    documentstatus::DocumentStatus, 
+    position::{Location, Position}, 
+    size::Size, terminal::Terminal, 
+    uicomponent::UiComponent, 
+    NAME, 
+    VERSION
 };
 use buffer::Buffer;
 
@@ -29,10 +35,18 @@ impl View {
         }
     }
 
+    pub const fn is_file_loaded(&self) -> bool {
+        self.buffer.is_file_loaded()
+    }
+
     pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
         self.buffer.load(file_name)?;
         self.set_needs_redraw(true);
         Ok(())
+    }
+
+    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
+        self.buffer.save_as(file_name)
     }
 
     fn render_text(row: usize, text: &str) {
@@ -275,18 +289,18 @@ impl UiComponent for View {
         self.needs_redraw
     }
 
-    fn draw(&mut self, origin_y: usize) -> Result<(), std::io::Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), std::io::Error> {
         let Size { height, width } = self.size;
-        let end_y = origin_y.saturating_add(height);
+        let end_y = origin_row.saturating_add(height);
 
         let vertical_center = height / 3;
         let top = self.scroll_offset.row;
         let left = self.scroll_offset.col;
         let right = self.scroll_offset.col.saturating_add(width);
 
-        for row in origin_y..end_y {
+        for row in origin_row..end_y {
             let line_idx = row
-                .saturating_sub(origin_y)
+                .saturating_sub(origin_row)
                 .saturating_add(top);
 
             if let Some(line) = self.buffer.get_line(line_idx, left..right) {

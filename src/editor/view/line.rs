@@ -22,6 +22,7 @@ pub struct TextFragment {
     replacement: Option<char>,
 }
 
+#[derive(Default)]
 pub struct Line {
     fragments: Vec<TextFragment>,
 }
@@ -43,6 +44,7 @@ impl fmt::Display for Line {
         write!(formatter, "{result}")
     }
 }
+
 impl Line {
 
     pub fn new(fragments: Vec<TextFragment>) -> Self {
@@ -118,6 +120,13 @@ impl Line {
             .sum()
     }
 
+    pub fn width(&self) -> usize {
+        self.fragments
+            .iter()
+            .map(|fragment| fragment.rendered_width.width())
+            .sum()
+    }
+
     fn replacement_character(s: &str) -> Option<char> {
         if s == " " {
             None
@@ -157,6 +166,14 @@ impl Line {
         }
 
         self.fragments = Self::str_to_fragments(&new_str);
+    }
+
+    pub fn append_char(&mut self, character: char) {
+        self.insert_char(character, self.grapheme_count());
+    }
+
+    pub fn delete_last(&mut self) {
+        self.delete_grapheme_at(self.grapheme_count().saturating_sub(1));
     }
 
     pub fn delete_grapheme_at(&mut self, grapheme_index: usize) {

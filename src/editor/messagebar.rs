@@ -32,7 +32,7 @@ impl UiComponent for MessageBar {
         self.needs_redraw || (!self.has_cleared_after_expiry && self.curr_message.is_expired())
     }
 
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
         if self.curr_message.is_expired() {
             self.has_cleared_after_expiry = true;
         }
@@ -43,7 +43,7 @@ impl UiComponent for MessageBar {
             &self.curr_message.text
         };
 
-        Terminal::print_row(origin_y, msg)
+        Terminal::print_row(origin_row, msg)
     }
 
     fn set_size(&mut self, _: Size) {}
