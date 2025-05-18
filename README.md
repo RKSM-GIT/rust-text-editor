@@ -119,10 +119,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Roadmap
 
 - [ ] Syntax highlighting
-- [ ] Multiple file support
+- [ ] Searching
 - [ ] Search and replace functionality
-- [ ] Custom key bindings
-- [ ] Plugin system
 
 ## Support
 
