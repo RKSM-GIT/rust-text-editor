@@ -99,9 +99,10 @@ src/
 
 ## Roadmap
 
-- [ ] Syntax highlighting
-- [ ] Searching
-- [ ] Search and replace functionality
+- [ ] Syntax highlighting.
+- [ ] Searching.
+- [ ] Search and replace functionality.
+- [ ] Use Rope data structure instead of Strings.
 
 ## Support
 
